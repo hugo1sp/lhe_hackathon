@@ -12,7 +12,10 @@ fi
 # 1. Generate synthetic data
 .venv/bin/python simulator/simulate.py --out data
 
-# 2. Export demo data for the frontend (docs/, served by GitHub Pages)
+# 2. Simulate users answering the one-tap questions -> data/labels.csv (model labels)
+.venv/bin/python collection/simulate_answers.py --data data
+
+# 3. Export demo data for the frontend (docs/, served by GitHub Pages)
 .venv/bin/python frontend/export.py --data data --out docs/data.json
 
-# 3. (next) Train model
+# 4. (next) Train model on daily.csv joined with labels.csv

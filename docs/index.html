@@ -32,6 +32,7 @@
   .opts { display: flex; gap: 8px; flex-wrap: wrap; }
   .opts button { font: inherit; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
   .opts button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .opts-export { font: inherit; font-size: 13px; padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; }
   .log { font: inherit; font-weight: 600; padding: 8px 16px; border: 0; border-radius: 10px; background: var(--high); color: #fff; cursor: pointer; float: right; }
 </style>
 </head>
@@ -63,6 +64,7 @@
     <p class="qtext" id="qtext"></p>
     <div class="opts" id="opts"></div>
     <p class="note" id="qnote"></p>
+    <button class="opts-export" id="export">Export answers as CSV</button>
   </div>
 
   <div class="card">
@@ -131,31 +133,50 @@ function show(p) {
   }).join("");
 }
 
-// One-tap answers are stored locally, keyed by person and date.
-const answers = JSON.parse(localStorage.getItem("answers") || "{}");
+// Every tap is stored as model-ready fields per person-day (same schema as
+// data/labels.csv from collection/simulate_answers.py). Unset fields = unknown.
+const FIELDS = ["migraine", "intensity", "onset", "prodrome", "stress", "illness", "alcohol"];
+const labels = JSON.parse(localStorage.getItem("labels") || "{}");
+
+function record(key, question, answer, fields) {
+  labels[key] = { ...labels[key], question, answer, ...fields };
+  localStorage.setItem("labels", JSON.stringify(labels));
+}
 
 function question(p, day) {
-  const key = `${p.id}/${day.date}`, q = day.question;
+  const key = `${p.id},${day.date}`, q = day.question, saved = labels[key] || {};
   const asked = p.days.filter(d => d.question).length;
   document.getElementById("qnote").textContent =
     `We only ask when the answer helps the forecast: ${asked} questions in the last ${p.days.length} days.`;
   document.getElementById("qtext").textContent = q ? q.text : "Nothing to ask today.";
   const opts = document.getElementById("opts");
-  opts.innerHTML = q ? q.options.map(o => `<button class="${answers[key] === o ? "on" : ""}">${o}</button>`).join("") : "";
+  opts.innerHTML = q ? q.options.map((o, i) =>
+    `<button data-i="${i}" class="${saved.question === q.id && saved.answer === o.label ? "on" : ""}">${o.label}</button>`).join("") : "";
   opts.onclick = e => {
-    if (e.target.tagName !== "BUTTON") return;
-    answers[key] = e.target.textContent;
-    localStorage.setItem("answers", JSON.stringify(answers));
+    if (e.target.dataset.i == null) return;
+    const o = q.options[e.target.dataset.i];
+    // Changing an answer must not leave fields from the previous one behind.
+    const clear = Object.fromEntries(q.options.flatMap(x => Object.keys(x.set)).map(f => [f, undefined]));
+    record(key, q.id, o.label, { ...clear, ...o.set });
     question(p, day);
   };
   const log = document.getElementById("log");
-  log.textContent = answers[`${key}/logged`] ? `Logged ${answers[`${key}/logged`]}` : "Log migraine now";
+  log.textContent = saved.onset ? `Logged ${saved.onset}` : "Log migraine now";
   log.onclick = () => {
-    answers[`${key}/logged`] = new Date().toTimeString().slice(0, 5);
-    localStorage.setItem("answers", JSON.stringify(answers));
+    record(key, "log_now", "", { migraine: 1, onset: new Date().toTimeString().slice(0, 5) });
     question(p, day);
   };
 }
+
+function exportCsv() {
+  const rows = Object.entries(labels).sort().map(([k, v]) =>
+    [k, v.question, v.answer, ...FIELDS.map(f => v[f] ?? "")].join(","));
+  const csv = ["person_id,date,question,answer," + FIELDS.join(","), ...rows].join("\n");
+  Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "labels.csv",
+  }).click();
+}
+document.getElementById("export").onclick = exportCsv;
 
 fetch("data.json").then(r => r.json()).then(persons => {
   const sel = document.getElementById("person");
