@@ -28,6 +28,11 @@
   .legend { font-size: 13px; color: var(--muted); margin-top: 8px; }
   .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--high); vertical-align: middle; margin-right: 4px; }
   .note { font-size: 13px; color: var(--muted); }
+  .qtext { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+  .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opts button { font: inherit; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .opts button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .log { font: inherit; font-weight: 600; padding: 8px 16px; border: 0; border-radius: 10px; background: var(--high); color: #fff; cursor: pointer; float: right; }
 </style>
 </head>
 <body>
@@ -50,6 +55,14 @@
       <div class="bar"><div id="fill"></div></div>
       <div class="note" style="margin-top:6px">estimated chance of migraine</div>
     </div>
+  </div>
+
+  <div class="card">
+    <button class="log" id="log">Log migraine now</button>
+    <h2>Today's question</h2>
+    <p class="qtext" id="qtext"></p>
+    <div class="opts" id="opts"></div>
+    <p class="note" id="qnote"></p>
   </div>
 
   <div class="card">
@@ -111,10 +124,37 @@ function show(p) {
   fill.style.width = (last.risk * 100) + "%";
   fill.style.background = color(last.risk);
   chart(p.days);
+  question(p, last);
   document.getElementById("signals").innerHTML = SIGNALS.map(([k, name, unit, dec]) => {
     const v = lastValue(p.days, k);
     return `<div class="sig"><div class="n">${name}</div><div class="v">${v == null ? "–" : v.toFixed(dec)} <span class="note">${unit}</span></div></div>`;
   }).join("");
+}
+
+// One-tap answers are stored locally, keyed by person and date.
+const answers = JSON.parse(localStorage.getItem("answers") || "{}");
+
+function question(p, day) {
+  const key = `${p.id}/${day.date}`, q = day.question;
+  const asked = p.days.filter(d => d.question).length;
+  document.getElementById("qnote").textContent =
+    `We only ask when the answer helps the forecast: ${asked} questions in the last ${p.days.length} days.`;
+  document.getElementById("qtext").textContent = q ? q.text : "Nothing to ask today.";
+  const opts = document.getElementById("opts");
+  opts.innerHTML = q ? q.options.map(o => `<button class="${answers[key] === o ? "on" : ""}">${o}</button>`).join("") : "";
+  opts.onclick = e => {
+    if (e.target.tagName !== "BUTTON") return;
+    answers[key] = e.target.textContent;
+    localStorage.setItem("answers", JSON.stringify(answers));
+    question(p, day);
+  };
+  const log = document.getElementById("log");
+  log.textContent = answers[`${key}/logged`] ? `Logged ${answers[`${key}/logged`]}` : "Log migraine now";
+  log.onclick = () => {
+    answers[`${key}/logged`] = new Date().toTimeString().slice(0, 5);
+    localStorage.setItem("answers", JSON.stringify(answers));
+    question(p, day);
+  };
 }
 
 fetch("data.json").then(r => r.json()).then(persons => {

@@ -9,9 +9,13 @@ Usage:
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "collection"))
+from questions import pick_questions, render  # noqa: E402
 
 SIGNALS = ["sleep_hours", "resting_hr", "hrv_rmssd", "steps", "stress_score"]
 
@@ -29,7 +33,9 @@ def main():
 
     out = []
     for p in persons.itertuples():
-        d = daily[daily.person_id == p.person_id].tail(args.days)
+        d = daily[daily.person_id == p.person_id].reset_index(drop=True)
+        qs = pick_questions(d, d["true_risk"].to_numpy())[-args.days:]
+        d = d.tail(args.days)
         out.append({
             "id": p.person_id,
             "sex": p.sex,
@@ -39,9 +45,10 @@ def main():
                     "date": r.date,
                     "risk": round(float(r.true_risk), 4),
                     "migraine": int(r.migraine),
+                    "question": render(q) if q else None,
                     **{s: (None if pd.isna(getattr(r, s)) else float(getattr(r, s))) for s in SIGNALS},
                 }
-                for r in d.itertuples()
+                for r, q in zip(d.itertuples(), qs)
             ],
         })
 
