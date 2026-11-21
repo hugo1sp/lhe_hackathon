@@ -9,8 +9,8 @@ if [ ! -d .venv ]; then
 fi
 .venv/bin/pip install -q -r requirements.txt
 
-# 1. Generate synthetic data
-.venv/bin/python simulator/simulate.py --out data
+# 1. Generate synthetic training population (200 persons with ground truth)
+.venv/bin/python simulator/population.py --out data
 
 # 2. Simulate users answering the one-tap questions -> data/labels.csv (model labels)
 .venv/bin/python collection/simulate_answers.py --data data

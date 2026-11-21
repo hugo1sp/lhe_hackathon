@@ -8,7 +8,7 @@ Collecting good data is the main bottleneck for existing solutions, so data coll
 
 ## How it works
 
-1. **Simulator** (`simulator/simulate.py`) – generates synthetic wearable + migraine data per person and day, with person-specific triggers, a 1–2 day prodrome before some attacks (frequency and strength vary per person), unobserved causes so attacks are only partly predictable, non-wear days and unreported attacks. Calibrated against two public datasets (mBrain21 and the hebaqueen wearable migraine dataset, see `datasets/stats.py`).
+1. **Simulator** (`simulator/population.py`) – generates the training population: synthetic wearable + migraine data per person and day, with person-specific triggers, a 1–2 day prodrome before some attacks (frequency and strength vary per person), unobserved causes so attacks are only partly predictable, non-wear days and unreported attacks. Calibrated against two public datasets (mBrain21 and the hebaqueen wearable migraine dataset, see `datasets/stats.py`).
 2. **Question policy** (`collection/questions.py`) – picks at most one question per day:
    - `attack_check` – activity crashed vs. personal baseline: confirm or rule out an attack
    - `prodrome` – forecast risk is high: capture early warning signs
@@ -31,7 +31,7 @@ Creates `.venv`, installs `requirements.txt` and runs the whole pipeline: simula
 
 ## Layout
 
-- `simulator/` – synthetic wearable + migraine data
+- `simulator/` – `population.py`: synthetic training population (wearable + migraine data with ground truth); `simulate.py`: fake smartwatch for the demo user Anna, watch data only (`data/watch.csv`, or `--stream` for one JSON line per day)
 - `datasets/stats.py` – calibration statistics from public datasets
 - `collection/` – question policy and simulated answers
 - `model/` – LightGBM forecast models
