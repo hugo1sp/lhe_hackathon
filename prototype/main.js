@@ -183,7 +183,11 @@
       S.t = nt;
       if (e) fire(e);
       if (S.target != null && S.t >= Math.min(S.target, P.T_END - 1 / 60)) S.target = null;
-      if (S.t >= P.T_END - 1 / 60) { S.ended = true; S.target = null; $('summary').classList.add('show'); }
+      if (S.t >= P.T_END - 1 / 60) {
+        S.ended = true; S.target = null; $('summary').classList.add('show');
+        dev.showApp();
+        say('The week is over. The phone now runs the Migrai app itself, with Anna\'s data: tap around.');
+      }
     }
     if (moving || (S.manual && S.busy)) P.scene.advance(dt, S.t);
     const sc = P.scene.render(S.t);

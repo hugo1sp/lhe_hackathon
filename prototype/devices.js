@@ -14,6 +14,8 @@
     watch = document.getElementById('watch');
     finger = document.getElementById('finger');
     pclock = document.getElementById('pclock');
+    document.querySelector('.phone').addEventListener('click', openApp);
+    document.getElementById('openApp').addEventListener('click', openApp);
   }
 
   function riskRing(r, size) {
@@ -68,7 +70,20 @@
 
   function setWatch(html) { mode.watch = 'custom'; ws.innerHTML = `<div class="w-pane">${html}</div>`; }
   function setPhone(html) { mode.phone = 'custom'; pb.innerHTML = `<div class="p-app p-pane">${html}</div>`; }
-  function idle() { mode.watch = 'idle'; mode.phone = 'idle'; key = ''; hideBanner(); P.scene.glow = false; }
+  // After the week: the phone hands over to the real Migrai app (its mobile layout, scaled into this screen).
+  // In the repo prototype/migrai is a symlink to ../app (works however the folder is served); on GitHub Pages the app is at ../migrai/.
+  const appUrl = fetch('migrai/', { method: 'HEAD' }).then(r => r.ok ? 'migrai/' : '../migrai/').catch(() => '../migrai/');
+  async function showApp() {
+    mode.phone = 'app';
+    const url = await appUrl;
+    if (mode.phone !== 'app') return;
+    const k = pb.clientWidth / 390;   // 390 px: the app's own phone width
+    document.body.classList.add('app-on');
+    pb.innerHTML = `<div class="p-migrai"><iframe src="${url}" title="Migrai app" style="transform:scale(${k});height:${pb.clientHeight / k}px"></iframe></div>`;
+  }
+  // Tapping the phone frame or the button opens the same app full screen (clicks inside the screen stay in the app).
+  async function openApp() { if (mode.phone === 'app') location.href = await appUrl; }
+  function idle() { document.body.classList.remove('app-on'); mode.watch = 'idle'; mode.phone = 'idle'; key = ''; hideBanner(); P.scene.glow = false; }
 
   function showBanner(title, body) {
     banner.innerHTML = `${ICON}<div><div class="b-t">Migraine Forecast · now</div><div class="b-h">${title}</div><div class="b-b">${body}</div></div>`;
@@ -118,5 +133,5 @@
   }
   function hideFinger() { finger.style.opacity = 0; finger.classList.remove('press'); }
 
-  P.dev = { init, update, setWatch, setPhone, idle, showBanner, hideBanner, buzz, tap, hideFinger, ICON, CHECK, riskRing };
+  P.dev = { init, update, setWatch, setPhone, idle, showApp, showBanner, hideBanner, buzz, tap, hideFinger, ICON, CHECK, riskRing };
 })(window.P);
