@@ -585,7 +585,7 @@ function banner() {
   const title = isEve() ? (f ? `Tomorrow: ${level(f.p).txt.toLowerCase()} risk (${pct(f.p)})` : "Your evening summary is ready") : `Good morning, Anna`;
   const body = isEve() ? (f && f.p >= 0.4 ? "Tap to see why, and how to prepare tonight." : "Your evening forecast is ready.")
     : `You slept ${hm(d.sleep)}. Migraine risk today: ${f ? pct(f.p) + " (" + level(f.p).txt.toLowerCase() + ")" : "no forecast"}.`;
-  b.innerHTML = `<div class="ai">${ic("wave")}</div><div><div class="nh"><span>Migrai</span><span>now</span></div><b>${title}</b><p>${body}</p></div>`;
+  b.innerHTML = `<div class="ai"><img src="logo.svg" alt=""></div><div><div class="nh"><span>Migrai</span><span>now</span></div><b>${title}</b><p>${body}</p></div>`;
   b.classList.add("on"); clearTimeout(bannerT); bannerT = setTimeout(() => b.classList.remove("on"), 4200);
 }
 
