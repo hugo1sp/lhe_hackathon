@@ -68,6 +68,14 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 # Project-Specific Instructions
 
+## Project concept
+
+We are building a predictive system that forecasts migraines from wearable data (smartwatch / Fitbit-style devices: heart rate, HRV, sleep, activity, etc.). The user sees the likelihood that they will have a migraine, not just a yes/no.
+
+Our edge: data collection is the major bottleneck for existing solutions, so we want to make collecting good data our differentiator.
+
+Status: concept and context only. Architecture, feasibility, and technical direction are still to be discussed. Do not implement anything or choose technologies until the team decides.
+
 Several people work at the same time directly on `main` (no branches, no PR review). Claude handles all git operations.
 
 ## Git workflow
