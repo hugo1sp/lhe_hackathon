@@ -26,8 +26,8 @@ the base model.)
 
 Evaluation (scored on `true_migraine` for every day, answered or not):
   - Population layer: 5-fold person-grouped (w_pop never sees the test user).
-  - Personal layer: walk-forward per test user, refit every week on the labels the
-    user had given up to that day, predict the next week.
+  - Personal layer: walk-forward per test user, refit every day on the labels the
+    user had given up to that day, predict the next day.
   Prints base vs base + population vs base + personal, and how the gain grows when
   the same users answer more questions (a random share of question answers kept;
   "Log migraine now" taps are always kept).
@@ -55,7 +55,7 @@ from sklearn.model_selection import GroupKFold
 
 WATCH = ["hrv_rmssd", "resting_hr", "sleep_hours", "stress_score", "steps"]
 WARMUP = 28     # days needed for the personal watch baseline
-REFIT = 7       # refit each user's layer weekly
+REFIT = 1       # refit each user's layer daily, so every new answer updates their weights
 LAM_POP = 1.0   # prior precision of the population layer around 0
 
 
@@ -192,7 +192,7 @@ def main():
 
     print(f"{len(X)} person-days, {meta['person_id'].nunique()} users, {X.shape[1]} personal features, "
           f"true attack rate {y.mean():.3f}")
-    print("Scored on true attacks on every day (answered or not); personal layer refit weekly, walk-forward\n")
+    print("Scored on true attacks on every day (answered or not); personal layer refit daily, walk-forward\n")
     print(f"  {'model':<30} ROC AUC  PR AUC  Brier")
     for name, p in [("base (watch only)", meta["p_base"]), ("base + population layer", p_pop),
                     ("base + personal layer", p_per)]:
