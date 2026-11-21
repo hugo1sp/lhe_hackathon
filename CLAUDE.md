@@ -94,3 +94,12 @@ We all work on `main` (no branches, no PR review). Claude handles git.
 - On conflicts, keep everyone's work. On rejected push, pull --rebase and push again.
 - Never force-push, never `reset --hard`, never commit secrets.
 
+## Language
+
+Talk to the user in Swedish. Code, comments, and docs in English.
+
+## Design
+
+Never use any emojis
+
+
