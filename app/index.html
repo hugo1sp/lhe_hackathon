@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f5f9">
+<title>Migraine Forecast</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="stage">
+  <!-- Left: brand + demo day picker (not part of the app) -->
+  <aside class="side left">
+    <div class="brandrow">
+      <div class="logo"><svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div>
+      <div><div class="brand">Migraine Forecast</div><div class="brand-sub">Know tomorrow's risk tonight</div></div>
+    </div>
+    <h1 class="pitch">Your watch already knows.<br><em>We turn it into a forecast.</em></h1>
+    <div class="picker-h"><span>Demo · choose Anna's "now"</span></div>
+    <div class="picker" id="picker" role="radiogroup" aria-label="Choose Anna's current day and time"></div>
+    <div class="picker-foot"><span><kbd>←</kbd> <kbd>→</kbd> step through time</span><button class="linkbtn" data-act="reset">Reset demo</button></div>
+  </aside>
+
+  <!-- Center: the app -->
+  <div class="device">
+    <div class="phone" id="phone">
+      <div class="screen" id="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span id="sbTime">20:30</span><span class="sb-r"><span class="sig"><i></i><i></i><i></i><i></i></span><b>5G</b><span class="bat"></span></span></div>
+        <div class="banner" id="banner" data-act="banner"></div>
+        <main class="views" id="views"></main>
+        <nav class="tabbar" id="tabbar" aria-label="Sections"></nav>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+        <div class="scrim" id="scrim" data-act="closeSheet"></div>
+        <section class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div class="sheet-body" id="sheetBody"></div></section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: context for presenters -->
+  <aside class="side right">
+    <div class="panel">
+      <h3>Meet Anna</h3>
+      <p>23, about <b id="aboutRate">3</b> migraines a month. She wears a smartwatch and has used the app for six months. Everything here is clickable — you are Anna.</p>
+    </div>
+    <div class="panel">
+      <h3>Things to try</h3>
+      <ul class="tries">
+        <li data-act="tryWhy"><span>1</span><div>Tap a driver to see <b>why</b> the risk is what it is</div></li>
+        <li data-act="tryLog"><span>2</span><div><b>Log a migraine</b> in one tap, details later</div></li>
+        <li data-act="tryHistory"><span>3</span><div>Tap any day in <b>History</b></div></li>
+        <li data-act="tryReport"><span>4</span><div>Share a <b>report</b> with the doctor</div></li>
+      </ul>
+    </div>
+    <p class="fine">Simulated data: person P0187 from our simulator, calibrated on the mBrain21 and Kaggle wearable-migraine datasets. Forecasts from a baseline model. Not medical advice.</p>
+  </aside>
+</div>
+
+<!-- Mobile: compact demo control -->
+<button class="mpick" id="mpick" data-act="mpick" aria-label="Demo: choose day"></button>
+<div class="mpop" id="mpop"></div>
+
+<div id="printReport"></div>
+<script src="anna_data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
