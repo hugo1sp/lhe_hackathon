@@ -80,15 +80,13 @@ Several people work at the same time directly on `main` (no branches, no PR revi
 
 ## Git workflow
 
-- **Always run `git pull --rebase origin main` before changing anything**, and again before every push.
-- Make small commits and push often so changes don't diverge.
-- **Push automatically (without asking) whenever a change is complete and working.** First verify the code runs and tests (if any) pass. Never push broken or half-finished code.
-- If a pull causes conflicts: read both sides, keep everyone's work, resolve the conflict, run `git rebase --continue`. Only ask the user if it's unclear which version should win.
-- If a push is rejected: run `git pull --rebase origin main` and push again.
-- Never use `git push --force` or `git reset --hard` on `main`.
-- Don't create branches unless the user asks.
-- Never commit `.env` or other secrets.
+We all work on `main` (no branches, no PR review). Claude handles git.
+
+- **Pull before changing anything:** `git pull --rebase origin main`.
+- **When work is finished and working: commit and push, without asking.** Never push broken or half-finished code.
+- On conflicts, keep everyone's work. On rejected push, pull --rebase and push again.
+- Never force-push, never `reset --hard`, never commit secrets.
 
 ## Language
 
-Communicate with the user in Swedish. Code, comments, and docs are written in English.
+Talk to the user in Swedish. Code, comments, and docs in English.
