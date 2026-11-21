@@ -17,7 +17,7 @@ Collecting good data is the main bottleneck for existing solutions, so data coll
    - `checkin` – nothing asked for a few days: secure a confirmed "no migraine" day
 
    `collection/simulate_answers.py` simulates users answering, and every tap becomes a model-ready label (`data/labels.csv`).
-3. **Base model** (`model/base.py`) – one shared LightGBM for all users that forecasts a migraine tomorrow from smartwatch data only: wearable signals, deviation from the person's own 28-day baseline, sleep regularity and non-wear. Cycle day and migraine history are left to the per-user personal layer, which builds on the base probability (`data/base_oof.csv`). LightGBM was chosen after comparing 9 model families. Evaluated with 5-fold CV grouped by person, scored against ground-truth attacks on every day (including unanswered ones).
+3. **Base model** (`model/base.py`) – one shared LightGBM per horizon (1, 2, 3 days ahead) for all users that forecasts a migraine from smartwatch data only: wearable signals, deviation from the person's own 28-day baseline, sleep regularity and non-wear. Cycle day and migraine history are left to the per-user personal layer, which builds on the base probability (`data/base_oof.csv`). LightGBM was chosen after comparing 9 model families. Evaluated with 5-fold CV grouped by person, scored against ground-truth attacks on every day (including unanswered ones).
 
 ## Run
 
@@ -25,7 +25,7 @@ Collecting good data is the main bottleneck for existing solutions, so data coll
 ./run.sh
 ```
 
-Creates `.venv`, installs `requirements.txt` and runs the whole pipeline: simulate data → simulate answers → export site data (`docs/data.json`) → train the base model (`data/model_base.txt`). Every push to `main` runs the same pipeline on GitHub Actions and redeploys the live demo.
+Creates `.venv`, installs `requirements.txt` and runs the whole pipeline: simulate data → simulate answers → export site data (`docs/data.json`) → train the base models (`data/model_base_d{1,2,3}.txt`). Every push to `main` runs the same pipeline on GitHub Actions and redeploys the live demo.
 
 `datasets/stats.py` (recomputes calibration stats from Kaggle) is not part of `run.sh`.
 
