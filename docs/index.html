@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migraine forecast</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e4e2dd;
+          --low:#2f9e6e; --mid:#e0a020; --high:#d1495b; --accent:#3a5bd9; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .today { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .pct { font-size: 64px; font-weight: 700; line-height: 1; }
+  .label { font-size: 18px; font-weight: 600; }
+  .bar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; width: 260px; max-width: 100%; margin-top: 8px; }
+  .bar > div { height: 100%; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  svg { width: 100%; height: auto; display: block; }
+  .signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .sig { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .sig .n { font-size: 12px; color: var(--muted); }
+  .sig .v { font-size: 20px; font-weight: 600; }
+  .legend { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--high); vertical-align: middle; margin-right: 4px; }
+  .note { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Migraine forecast</h1>
+  <p class="sub">Likelihood of a migraine based on wearable data (sleep, heart rate, HRV, activity, stress).</p>
+
+  <div class="card">
+    <label>Person: <select id="person"></select></label>
+    <span id="meta" class="note"></span>
+  </div>
+
+  <div class="card today">
+    <div>
+      <div class="note" id="date"></div>
+      <div class="pct" id="pct"></div>
+    </div>
+    <div>
+      <div class="label" id="level"></div>
+      <div class="bar"><div id="fill"></div></div>
+      <div class="note" style="margin-top:6px">estimated chance of migraine</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Risk, last 60 days</h2>
+    <svg id="chart" viewBox="0 0 800 220"></svg>
+    <div class="legend"><span class="dot"></span>reported migraine day</div>
+  </div>
+
+  <div class="card">
+    <h2>Latest wearable signals</h2>
+    <div class="signals" id="signals"></div>
+  </div>
+
+  <p class="note">Demo with simulated data. Risk values are a placeholder from the simulator until the model is trained.</p>
+</main>
+
+<script>
+const SIGNALS = [
+  ["sleep_hours", "Sleep", "h", 1], ["resting_hr", "Resting HR", "bpm", 0],
+  ["hrv_rmssd", "HRV", "ms", 0], ["steps", "Steps", "", 0], ["stress_score", "Stress", "/100", 0],
+];
+const color = r => r < 0.2 ? "var(--low)" : r < 0.5 ? "var(--mid)" : "var(--high)";
+const level = r => r < 0.2 ? "Low risk" : r < 0.5 ? "Moderate risk" : "High risk";
+
+function lastValue(days, key) {
+  for (let i = days.length - 1; i >= 0; i--) if (days[i][key] != null) return days[i][key];
+  return null;
+}
+
+function chart(days) {
+  const W = 800, H = 220, L = 36, R = 10, T = 10, B = 26;
+  const x = i => L + i * (W - L - R) / (days.length - 1);
+  const y = r => T + (1 - r) * (H - T - B);
+  let s = "";
+  for (const g of [0, 0.25, 0.5, 0.75, 1]) {
+    s += `<line x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}" stroke="#e4e2dd"/>`;
+    s += `<text x="${L - 6}" y="${y(g) + 4}" font-size="11" fill="#6b6b70" text-anchor="end">${g * 100}%</text>`;
+  }
+  const pts = days.map((d, i) => `${x(i)},${y(d.risk)}`).join(" ");
+  s += `<polygon points="${x(0)},${y(0)} ${pts} ${x(days.length - 1)},${y(0)}" fill="#3a5bd9" opacity=".08"/>`;
+  s += `<polyline points="${pts}" fill="none" stroke="#3a5bd9" stroke-width="2"/>`;
+  days.forEach((d, i) => {
+    if (d.migraine) s += `<circle cx="${x(i)}" cy="${y(d.risk)}" r="4.5" fill="#d1495b"/>`;
+  });
+  for (const i of [0, Math.floor(days.length / 2), days.length - 1])
+    s += `<text x="${x(i)}" y="${H - 6}" font-size="11" fill="#6b6b70" text-anchor="middle">${days[i].date}</text>`;
+  document.getElementById("chart").innerHTML = s;
+}
+
+function show(p) {
+  const last = p.days[p.days.length - 1];
+  document.getElementById("meta").textContent = ` · ${p.sex === "F" ? "Female" : "Male"}, ${p.age}`;
+  document.getElementById("date").textContent = last.date;
+  const pct = document.getElementById("pct");
+  pct.textContent = Math.round(last.risk * 100) + "%";
+  pct.style.color = color(last.risk);
+  document.getElementById("level").textContent = level(last.risk);
+  const fill = document.getElementById("fill");
+  fill.style.width = (last.risk * 100) + "%";
+  fill.style.background = color(last.risk);
+  chart(p.days);
+  document.getElementById("signals").innerHTML = SIGNALS.map(([k, name, unit, dec]) => {
+    const v = lastValue(p.days, k);
+    return `<div class="sig"><div class="n">${name}</div><div class="v">${v == null ? "–" : v.toFixed(dec)} <span class="note">${unit}</span></div></div>`;
+  }).join("");
+}
+
+fetch("data.json").then(r => r.json()).then(persons => {
+  const sel = document.getElementById("person");
+  sel.innerHTML = persons.map((p, i) => `<option value="${i}">${p.id}</option>`).join("");
+  sel.onchange = () => show(persons[sel.value]);
+  show(persons[0]);
+});
+</script>
+</body>
+</html>

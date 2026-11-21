@@ -12,4 +12,7 @@ fi
 # 1. Generate synthetic data
 .venv/bin/python simulator/simulate.py --out data
 
-# 2. (next) Train model
+# 2. Export demo data for the frontend (docs/, served by GitHub Pages)
+.venv/bin/python frontend/export.py --data data --out docs/data.json
+
+# 3. (next) Train model
