@@ -27,12 +27,13 @@
   function watchIdle(t) {
     const d = P.dayOf(t), r = P.DAYS[d].risk;
     if (P.asleep(t)) return `<div class="w-idle dim"><div class="w-time">${P.fmtClock(t)}</div><div class="w-date">Sleep tracking</div></div>`;
-    const logged = P.S.flags.logged && t >= P.ATTACK.start;
+    const ul = P.S.userLog, own = ul != null && P.dayOf(ul) === d && t >= ul;
+    const logged = (P.S.flags.logged && t >= P.ATTACK.start) || own;
     return `<div class="w-idle">
       <div class="w-date">${P.DAYS[d].name} ${P.DAYS[d].date}</div>
       <div class="w-time">${P.fmtClock(t)}</div>
       <div class="w-comp">${riskRing(r, 46)}<span>Migraine<br>risk today</span></div>
-      ${logged ? `<div class="w-log on">Migraine logged ${P.fmtClock(P.ATTACK.start)}</div>`
+      ${logged ? `<div class="w-log on">Migraine logged ${P.fmtClock(own ? ul : P.ATTACK.start)}</div>`
                : '<button class="w-log" data-k="log">Log migraine</button>'}</div>`;
   }
 
@@ -58,7 +59,7 @@
 
   function update(t) {
     pclock.textContent = P.fmtClock(t);
-    const k = Math.round(t * 60) + '|' + P.S.flags.logged + '|' + mode.watch + mode.phone;
+    const k = Math.round(t * 60) + '|' + P.S.flags.logged + '|' + P.S.userLog + '|' + mode.watch + mode.phone;
     if (k === key) return;
     key = k;
     if (mode.watch === 'idle') ws.innerHTML = watchIdle(t);
@@ -81,9 +82,11 @@
   }
 
   // Simulated finger tap on an element inside the watch or phone.
+  // Returns the tapped element. In manual mode it waits for the viewer's click instead.
   async function tap(sel, tk) {
     const el = document.querySelector(sel);
-    if (!el) return;
+    if (!el) return el;
+    if (P.S.manual) return clickOn(el, tk);
     const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     finger.style.transition = 'none';
     finger.style.left = cx + 70 + 'px'; finger.style.top = cy + 90 + 'px'; finger.style.opacity = 0;
@@ -96,6 +99,22 @@
     finger.classList.remove('press'); el.classList.remove('pressed');
     await tk.wait(160);
     finger.style.opacity = 0;
+    return el;
+  }
+  // Answer options can be picked freely; any other button only by itself.
+  function clickOn(goal, tk) {
+    const group = goal.parentElement.matches('.w-opts, .p-chips') ? [...goal.parentElement.children] : [goal];
+    goal.classList.add('tap-goal');
+    return new Promise((res, rej) => {
+      let open = true;
+      const close = () => { open = false; group.forEach(b => { b.onclick = null; b.classList.remove('tap-goal', 'tap-ok'); }); };
+      group.forEach(b => { b.classList.add('tap-ok'); b.onclick = () => {
+        close(); b.classList.add('pressed');
+        setTimeout(() => { b.classList.remove('pressed'); res(b); }, 220);
+      }; });
+      const check = () => { if (!open) return; if (tk.cancelled) { close(); rej(new Error('cancelled')); } else requestAnimationFrame(check); };
+      requestAnimationFrame(check);
+    });
   }
   function hideFinger() { finger.style.opacity = 0; finger.classList.remove('press'); }
 

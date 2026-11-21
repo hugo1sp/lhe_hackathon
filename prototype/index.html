@@ -146,6 +146,11 @@ main { display: grid; grid-template-columns: 880px 1fr; gap: 28px; padding: 0 28
 #finger { position: fixed; left: 0; top: 0; width: calc(34px * var(--s)); height: calc(34px * var(--s)); margin: calc(-17px * var(--s)) 0 0 calc(-17px * var(--s));
   border-radius: 50%; background: rgba(255,255,255,.55); border: 2px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px rgba(0,0,0,.4);
   pointer-events: none; opacity: 0; z-index: 50; transition: left .6s var(--ease), top .6s var(--ease), opacity .25s, transform .15s; }
+/* Manual mode: the viewer taps the highlighted button instead of the simulated finger */
+.tap-ok { cursor: pointer; }
+.tap-goal { outline: 2px solid var(--accent); outline-offset: 2px; animation: hint 1.2s ease-in-out infinite; }
+@keyframes hint { 50% { outline-color: transparent; } }
+.ctl .mstep { display: none; } body.manual .ctl .mstep { display: inline-block; }
 #finger.press { transform: scale(.75); background: rgba(143,168,255,.8); }
 </style>
 </head>
@@ -159,6 +164,9 @@ main { display: grid; grid-template-columns: 880px 1fr; gap: 28px; padding: 0 28
     <div class="ctl">
       <button id="play">Pause</button>
       <button data-speed="1" class="on">1x</button><button data-speed="2">2x</button><button data-speed="4">4x</button>
+      <button id="manual" title="Control time and tap the watch and phone buttons yourself (M)">Manual</button>
+      <button class="mstep" id="hour" title="Move time forward one hour (Right arrow)">+1 h</button>
+      <button class="mstep" id="nextEv" title="Move time to the next notification (Shift + Right arrow)">Next event</button>
       <button id="restart">Restart</button>
     </div>
   </header>

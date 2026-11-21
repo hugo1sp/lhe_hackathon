@@ -1,6 +1,6 @@
 // Simulation clock, event scripts (question, warning, attack logging), captions and controls.
 (function (P) {
-  const S = P.S = { t: 5.5, paused: false, speed: 1, busy: false, tk: null, done: new Set(), cap: null, flags: { logged: false }, ended: false };
+  const S = P.S = { t: 5.5, paused: false, speed: 1, busy: false, tk: null, done: new Set(), cap: null, flags: { logged: false }, ended: false, manual: false, target: null, userLog: null };
   const $ = id => document.getElementById(id);
   const dev = P.dev;
 
@@ -11,7 +11,7 @@
       const tick = () => {
         if (tk.cancelled) return rej(new Error('cancelled'));
         const now = performance.now();
-        if (!S.paused) left -= (now - last) * Math.sqrt(S.speed);
+        if (!S.paused || S.manual) left -= (now - last) * Math.sqrt(S.speed);
         last = now;
         left <= 0 ? res() : requestAnimationFrame(tick);
       };
@@ -31,10 +31,10 @@
       <div class="w-opts"><button data-k="calm">Calm</button><button data-k="tense">Tense</button><button data-k="very">Very stressed</button></div>`);
     dev.showBanner('Quick question', 'Your stress has been high for 3 days. How do you feel right now?');
     await tk.wait(2800);
-    await dev.tap('#wscreen [data-k="tense"]', tk);
+    const feel = await dev.tap('#wscreen [data-k="tense"]', tk);
     P.scene.glow = false;
     dev.setWatch(`<div class="w-done">${dev.CHECK}<div class="w-dt">Thanks</div><div class="w-ds">Saved. That was 1 tap.</div></div>`);
-    dev.showBanner('Answered on watch', 'Tense, 13:40. Thanks, Anna.');
+    dev.showBanner('Answered on watch', `${feel.textContent}, 13:40. Thanks, Anna.`);
     await tk.wait(2400);
     dev.idle();
     say('Saved as a label for the model. One tap, once, only when it matters. Fast-forwarding to the next notification.');
@@ -76,38 +76,68 @@
     await tk.wait(2200);
     dev.idle(); dev.update(S.t);
     await dev.tap('#wscreen [data-k="log"]', tk);
-    dev.setWatch(`<div class="w-q">How bad is it?</div><div class="w-sub">Started now · ${P.fmtClock(S.t)}</div>
-      <div class="w-opts"><button data-k="mild">Mild</button><button data-k="mod">Moderate</button><button data-k="sev">Severe</button></div>`);
-    await tk.wait(1400);
-    await dev.tap('#wscreen [data-k="mod"]', tk);
+    const sev = await severity(tk, false);
     S.flags.logged = true;
-    dev.setWatch(`<div class="w-done">${dev.CHECK}<div class="w-dt">Logged</div><div class="w-ds">${P.fmtClock(S.t)} · Moderate<br>2 taps</div></div>`);
+    dev.setWatch(`<div class="w-done">${dev.CHECK}<div class="w-dt">Logged</div><div class="w-ds">${P.fmtClock(S.t)} · ${sev}<br>2 taps</div></div>`);
     say('Two taps on the watch: onset time and severity are saved. The phone picks it up straight away.');
-    dev.showBanner('Migraine logged on watch', `Started ${P.fmtClock(S.t)} · Moderate`);
+    dev.showBanner('Migraine logged on watch', `Started ${P.fmtClock(S.t)} · ${sev}`);
     await tk.wait(2200);
     dev.hideBanner();
-    dev.setPhone(`<div class="p-h"><div class="p-hi">Migraine logged</div><div class="p-sub">Started ${P.fmtClock(S.t)} · Moderate</div></div>
+    await details(tk, sev);
+    dev.idle();
+    say('Forecast confirmed: the warning came 7 h 20 min before onset, and the exact onset time is a clean label for the model.');
+  }
+
+  // Shared logging steps: severity on watch or phone, then optional details on the phone.
+  async function severity(tk, onPhone) {
+    const opts = '<button data-k="mild">Mild</button><button data-k="mod">Moderate</button><button data-k="sev">Severe</button>';
+    const sub = `Started now · ${P.fmtClock(S.t)}`;
+    if (onPhone) {
+      dev.setPhone(`<div class="p-h"><div class="p-hi">How bad is it?</div><div class="p-sub">${sub}</div></div><div class="p-chips">${opts}</div>`);
+      return (await dev.tap('#pbody [data-k="mod"]', tk)).textContent;
+    }
+    dev.setWatch(`<div class="w-q">How bad is it?</div><div class="w-sub">${sub}</div><div class="w-opts">${opts}</div>`);
+    await tk.wait(1400);
+    return (await dev.tap('#wscreen [data-k="mod"]', tk)).textContent;
+  }
+  async function details(tk, sev) {
+    dev.setPhone(`<div class="p-h"><div class="p-hi">Migraine logged</div><div class="p-sub">Started ${P.fmtClock(S.t)} · ${sev}</div></div>
       <div class="p-sec">Add details (optional)</div>
       <div class="p-chips"><button data-k="med">Took medication</button><button>Dizziness</button><button>Nausea</button><button>Light sensitive</button></div>
       <button class="p-log" data-k="done">Done</button>`);
-    await tk.wait(1200);
-    await dev.tap('#pbody [data-k="med"]', tk);
-    document.querySelector('#pbody [data-k="med"]').classList.add('sel');
-    await tk.wait(600);
+    if (S.manual) {   // the viewer picks any details, then taps Done
+      document.querySelectorAll('#pbody .p-chips button').forEach(b => { b.classList.add('tap-ok'); b.onclick = () => b.classList.toggle('sel'); });
+    } else {
+      await tk.wait(1200);
+      (await dev.tap('#pbody [data-k="med"]', tk)).classList.add('sel');
+      await tk.wait(600);
+    }
     await dev.tap('#pbody [data-k="done"]', tk);
     dev.setPhone(`<div class="p-saved">${dev.CHECK}<div class="p-hi">Saved</div><div class="p-sub">Rest up, Anna. We will check in when it is over.</div></div>`);
     await tk.wait(2400);
+  }
+
+  // Manual mode: Anna logs a migraine herself, at any time, from the watch or the phone.
+  async function selfLog(tk, onPhone) {
+    say(`${P.fmtDay(S.t)}, ${P.fmtClock(S.t)}. Anna logs a migraine herself on her ${onPhone ? 'phone' : 'watch'}.`);
+    const sev = await severity(tk, onPhone);
+    S.userLog = S.t;
+    if (!onPhone) dev.setWatch(`<div class="w-done">${dev.CHECK}<div class="w-dt">Logged</div><div class="w-ds">${P.fmtClock(S.t)} · ${sev}</div></div>`);
+    await details(tk, sev);
     dev.idle();
-    say('Forecast confirmed: the warning came 7 h 20 min before onset, and the exact onset time is a clean label for the model.');
+    say('Saved with its exact onset time: a clean label for the model.');
   }
 
   const SCRIPTS = { question, warning, attack };
 
   function fire(e) {
     if (e.kind === 'forecast') { P.charts.flash(e.day); return; }
+    run(SCRIPTS[e.kind]);
+  }
+  function run(script, ...args) {
     const tk = S.tk = token();
     S.busy = true;
-    SCRIPTS[e.kind](tk).catch(() => {}).finally(() => {
+    script(tk, ...args).catch(() => {}).finally(() => {
       if (S.tk === tk) { S.busy = false; S.tk = null; }
       dev.hideFinger();
     });
@@ -115,8 +145,9 @@
 
   function seek(t) {
     if (S.tk) S.tk.cancelled = true;
-    S.tk = null; S.busy = false; S.ended = false; S.cap = null;
+    S.tk = null; S.busy = false; S.ended = false; S.cap = null; S.target = null;
     S.t = t;
+    if (S.userLog != null && S.userLog > t) S.userLog = null;
     S.done = new Set(P.EVENTS.filter(e => e.t < t).map(e => e.id));
     S.flags.logged = S.done.has('attack');
     dev.idle(); dev.hideFinger();
@@ -142,16 +173,19 @@
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (!S.paused && !S.busy && !S.ended) {
-      const rate = (P.isFast(S.t) ? 10 : P.asleep(S.t) ? 2.4 : 0.7) * S.speed;
-      let nt = Math.min(P.T_END - 1 / 60, S.t + dt * rate);
+    const moving = !S.paused || S.target != null;   // in manual mode time only moves toward a chosen target
+    if (moving && !S.busy && !S.ended) {
+      let rate = (P.isFast(S.t) ? 10 : P.asleep(S.t) ? 2.4 : 0.7) * S.speed;
+      if (S.target != null) rate = Math.max(rate, 6);
+      let nt = Math.min(P.T_END - 1 / 60, S.t + dt * rate, S.target ?? Infinity);
       const e = P.EVENTS.find(x => !S.done.has(x.id) && x.t >= S.t && x.t <= nt);
       if (e) { nt = e.t; S.done.add(e.id); }
       S.t = nt;
       if (e) fire(e);
-      if (S.t >= P.T_END - 1 / 60) { S.ended = true; $('summary').classList.add('show'); }
+      if (S.target != null && S.t >= Math.min(S.target, P.T_END - 1 / 60)) S.target = null;
+      if (S.t >= P.T_END - 1 / 60) { S.ended = true; S.target = null; $('summary').classList.add('show'); }
     }
-    if (!S.paused) P.scene.advance(dt, S.t);
+    if (moving || (S.manual && S.busy)) P.scene.advance(dt, S.t);
     const sc = P.scene.render(S.t);
     P.charts.render(S.t, S.done);
     dev.update(S.t);
@@ -180,6 +214,23 @@
     fit();
     P.scene.init(); P.charts.init(); dev.init();
     $('play').onclick = () => setPaused(!S.paused);
+    const setManual = m => {
+      S.manual = m; S.target = null; setPaused(m);
+      $('manual').classList.toggle('on', m); document.body.classList.toggle('manual', m);
+    };
+    const step = next => {
+      if (!S.manual || S.busy || S.ended) return;
+      const ev = P.EVENTS.find(e => e.block && !S.done.has(e.id) && e.t >= S.t);
+      S.target = next ? (ev ? ev.t : P.T_END) : (S.target ?? S.t) + 1;
+    };
+    $('manual').onclick = () => setManual(!S.manual);
+    $('hour').onclick = () => step(false);
+    $('nextEv').onclick = () => step(true);
+    // Manual mode: the idle "Log migraine" buttons on watch and phone work at any time.
+    document.querySelector('.devices').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-k="log"], [data-k="plog"]');
+      if (b && S.manual && !S.busy && !S.ended) run(selfLog, b.dataset.k === 'plog');
+    });
     $('restart').onclick = () => { seek(5.5); setPaused(false); };
     $('replay').onclick = () => { seek(5.5); setPaused(false); };
     document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => {
@@ -187,7 +238,9 @@
       document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('on', x === b));
     });
     $('timeline').onclick = ev => seek(P.charts.timeAt(ev.clientX));
-    addEventListener('keydown', ev => { if (ev.code === 'Space') { ev.preventDefault(); setPaused(!S.paused); } });
+    addEventListener('keydown', ev => { if (ev.code === 'Space') { ev.preventDefault(); setPaused(!S.paused); }
+      else if (ev.code === 'KeyM') setManual(!S.manual);
+      else if (ev.code === 'ArrowRight') { ev.preventDefault(); step(ev.shiftKey); } });
     const q = new URLSearchParams(location.search);
     if (q.has('t')) seek(+q.get('t'));
     if (q.has('speed')) S.speed = +q.get('speed');
