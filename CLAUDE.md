@@ -94,12 +94,3 @@ We all work on `main` (no branches, no PR review). Claude handles git.
 - On conflicts, keep everyone's work. On rejected push, pull --rebase and push again.
 - Never force-push, never `reset --hard`, never commit secrets.
 
-## Language
-
-Talk to the user in Swedish. Code, comments, and docs in English.
-
-## Datasets
-
-We are going to use these two datasets to synthesize patient data:
-https://www.kaggle.com/datasets/jonvdrdo/mbrain21/data
-https://www.kaggle.com/datasets/hebaqueen/migraine-dataset-from-wearable-devices
