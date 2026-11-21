@@ -229,5 +229,9 @@
   addEventListener("keydown", e => { if (e.key.toLowerCase() === "f" && !e.metaKey && !e.ctrlKey && !e.altKey) ACT.phoneOnly(); });
 
   addEventListener("beforeunload", () => { if (L.on && L.snap) { S = JSON.parse(L.snap); save(); } });
+  // ?live&phone (e.g. when opened from the followanna prototype): start in live mode and/or phone only
+  const q = new URLSearchParams(location.search);
+  if (q.has("live")) ACT.liveOn();
+  if (q.has("phone")) ACT.phoneOnly();
   requestAnimationFrame(frame);
 })();

@@ -81,8 +81,8 @@
     document.body.classList.add('app-on');
     pb.innerHTML = `<div class="p-migrai"><iframe src="${url}" title="Migrai app" style="transform:scale(${k});height:${pb.clientHeight / k}px"></iframe></div>`;
   }
-  // Tapping the phone frame or the button opens the same app full screen (clicks inside the screen stay in the app).
-  async function openApp() { if (mode.phone === 'app') location.href = await appUrl; }
+  // Tapping the phone frame or the button opens the same app full screen, in live mode and phone only (clicks inside the screen stay in the app).
+  async function openApp() { if (mode.phone === 'app') location.href = (await appUrl) + '?live&phone'; }
   function idle() { document.body.classList.remove('app-on'); mode.watch = 'idle'; mode.phone = 'idle'; key = ''; hideBanner(); P.scene.glow = false; }
 
   function showBanner(title, body) {
