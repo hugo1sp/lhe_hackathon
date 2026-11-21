@@ -29,14 +29,16 @@ Evaluation (scored on `true_migraine` for every day, answered or not):
   - Personal layer: walk-forward per test user, refit every week on the labels the
     user had given up to that day, predict the next week.
   Prints base vs base + population vs base + personal, and how the gain grows when
-  the same users give more answers (a random share of labels.csv kept).
+  the same users answer more questions (a random share of question answers kept;
+  "Log migraine now" taps are always kept).
 
-Finding on the simulator data: the population layer gives the whole gain; per-user
-deviations tie it at best (also with perfect labels), because the simulated
-predictability comes mostly from prodrome physiology, not from per-person trigger
-sensitivities (the simulator's true risk only reaches ROC AUC ~0.73). The per-user
-prior is therefore strong (--lam 30): it never hurts and can pick up real
-individual differences when they exist.
+Training target: the label for t+1, where days without a logged or answered attack
+count as no attack once the user has started giving input (the "Log migraine now"
+button is always there). Training only on answered days was badly biased: those are
+mostly attack days, and the layer learned to predict attacks everywhere.
+
+The per-user prior is strong (--lam 30), so users move away from the population
+layer only as far as their own data supports.
 
 Usage:
   python model/personal.py --data data [--lam 30]
@@ -111,10 +113,15 @@ def build(daily, labels, base):
     })
 
     p = d["p_base"].clip(1e-4, 1 - 1e-4)
+    # Target: the label for t+1. "Log migraine now" is always available, so once a user has
+    # started giving input, a day without a logged or answered attack counts as no attack.
+    gave_input = (d["label"].notna() | d[["prodrome", "stress", "illness", "alcohol"]].notna().any(axis=1))
+    active_next = gave_input.groupby(d["person_id"]).cummax().groupby(d["person_id"]).shift(-1).fillna(False)
+    target = g["label"].shift(-1).fillna(0).where(active_next.astype(bool))
     meta = pd.DataFrame({
         "person_id": d["person_id"], "date": d["date"], "day": g.cumcount(),
         "offset": np.log(p / (1 - p)), "p_base": p,
-        "y": g["label"].shift(-1), "y_true": g["true_migraine"].shift(-1),
+        "y": target, "y_true": g["true_migraine"].shift(-1),
     })
     keep = (meta["day"] >= WARMUP) & meta["y_true"].notna() & meta["p_base"].notna()
     return X[keep].reset_index(drop=True), meta[keep].reset_index(drop=True)
@@ -154,7 +161,7 @@ def evaluate(X, meta, lam):
             days = meta["day"].to_numpy()[rows]
             for start in range(days.min(), days.max() + 1, REFIT):
                 block = rows[(days >= start) & (days < start + REFIT)]
-                train = rows[(days + 1 <= start) & labelled[rows]]  # target day already answered
+                train = rows[(days + 1 <= start) & labelled[rows]]  # target day already over
                 w = fit(Xv[train], off[train], y[train], w_pop, lam) if len(train) else w_pop
                 p_per[block] = predict(Xv[block], off[block], w)
 
@@ -191,17 +198,17 @@ def main():
                     ("base + personal layer", p_per)]:
         print(f"  {name:<30} {scores(y, p)[0]:.3f}    {scores(y, p)[1]:.3f}   {scores(y, p)[2]:.4f}")
 
-    print("\nMore answers -> better forecast: same users with a share of their answers dropped at random")
+    print("\nMore answers -> better forecast: same users with a share of their question answers dropped")
     print(f"  {'answers kept':<14} {'per week':>8}  ROC AUC  PR AUC  Brier    AUC gain vs base")
     rng = np.random.default_rng(0)
     n_days = daily.groupby("person_id").size().mean()
     base_auc = scores(y, meta["p_base"])[0]
     for keep in [0.0, 0.25, 0.5, 1.0]:
-        kept = labels[rng.random(len(labels)) < keep]
+        kept = labels[(labels["question"] == "log_now") | (rng.random(len(labels)) < keep)]
         Xk, mk = build(daily, kept, base)
         _, pk, _ = evaluate(Xk, mk, args.lam)
         s = scores(mk["y_true"].astype(int), pk)
-        print(f"  {keep:<14.0%} {7 * len(kept) / daily['person_id'].nunique() / n_days:>8.1f}  "
+        print(f"  {keep:<14.0%} {7 * (kept['question'] != 'log_now').sum() / daily['person_id'].nunique() / n_days:>8.1f}  "
               f"{s[0]:.3f}    {s[1]:.3f}   {s[2]:.4f}   {s[0] - base_auc:+.3f}")
 
     print("\nPopulation layer: largest effects on top of the base (log-odds per unit):")

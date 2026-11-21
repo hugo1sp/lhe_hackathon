@@ -44,6 +44,28 @@ def answer(qid, row, rng):
     return "Yes" if attack else "No"  # no_data, checkin
 
 
+def add_truth(d, rng):
+    """Add the truth a simulated user answers from (one person's days, in order)."""
+    # Users notice a real prodrome 70 % of the time and report false alarms on 8 % of other days
+    felt = np.where(d["true_prodrome"] > 0, rng.random(len(d)) < 0.7, rng.random(len(d)) < 0.08)
+    d["prodrome"] = np.where(felt, rng.choice([1, 2], len(d)), 0)
+    d["intensity"] = np.where(d["migraine_intensity"] > 0, d["migraine_intensity"],
+                              rng.choice([2, 3, 4], len(d)))
+    return d
+
+
+def respond(r, q, rng):
+    """The labels.csv row a user produces on day `r` when asked `q` (None if no input)."""
+    if r.migraine:  # user tapped "Log migraine now"
+        return {"person_id": r.person_id, "date": r.date, "question": "log_now", "answer": "",
+                **LOG_NOW, "intensity": r.migraine_intensity}
+    if q and rng.random() < ANSWER_RATE:
+        label = answer(q["id"], r, rng)
+        return {"person_id": r.person_id, "date": r.date, "question": q["id"], "answer": label,
+                **dict(QUESTIONS[q["id"]][1])[label]}
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -53,22 +75,12 @@ def main():
 
     daily = pd.read_csv(Path(args.data) / "daily.csv")
     rows = []
-    for pid, d in daily.groupby("person_id"):
-        d = d.reset_index(drop=True)
-        # Truth the simulated user answers from. Users notice a real prodrome 70 % of
-        # the time and report false alarms on 8 % of other days
-        felt = np.where(d["true_prodrome"] > 0, rng.random(len(d)) < 0.7, rng.random(len(d)) < 0.08)
-        d["prodrome"] = np.where(felt, rng.choice([1, 2], len(d)), 0)
-        d["intensity"] = np.where(d["migraine_intensity"] > 0, d["migraine_intensity"],
-                                  rng.choice([2, 3, 4], len(d)))
+    for _, d in daily.groupby("person_id"):
+        d = add_truth(d.reset_index(drop=True), rng)
         for q, r in zip(pick_questions(d, d["true_risk"].to_numpy()), d.itertuples()):
-            if r.migraine:  # user tapped "Log migraine now"
-                rows.append({"person_id": pid, "date": r.date, "question": "log_now", "answer": "",
-                             **LOG_NOW, "intensity": r.migraine_intensity})
-            elif q and rng.random() < ANSWER_RATE:
-                label = answer(q["id"], r, rng)
-                fields = dict(QUESTIONS[q["id"]][1])[label]
-                rows.append({"person_id": pid, "date": r.date, "question": q["id"], "answer": label, **fields})
+            row = respond(r, q, rng)
+            if row:
+                rows.append(row)
 
     labels = pd.DataFrame(rows, columns=["person_id", "date", "question", "answer"] + FIELDS)
     labels.to_csv(Path(args.data) / "labels.csv", index=False)
