@@ -6,8 +6,9 @@
 /* ================= Data & helpers ================= */
 const P = ANNA.person, DAYS = ANNA.days, OUT = ANNA.outlook;
 const IDX = Object.fromEntries(DAYS.map((d, i) => [d.date, i]));
+const MONTHS = [...new Set(DAYS.map(d => d.date.slice(0, 7)))];
 const FIRST_FC = DAYS.find(d => d.risk != null).date;
-const SLOTS = ["2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25"].flatMap(date => [{ date, slot: "morning" }, { date, slot: "evening" }]);
+const SLOTS = DAYS.slice(-4).map(d => d.date).flatMap(date => [{ date, slot: "morning" }, { date, slot: "evening" }]);
 const EVENING = "20:30";
 
 const $ = id => document.getElementById(id);
@@ -60,9 +61,9 @@ const ICONS = {
 const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
 
 /* ================= Session state ================= */
-const KEY = "migraine-forecast-app-v1";
-const fresh = () => ({ now: { date: "2026-06-24", slot: "evening" }, tab: "today", logs: {}, answers: {}, auto: {}, autoLast: null,
-  plan: {}, remind: true, hist: "6w", month: "2026-06", sel: null, sent: false });
+const KEY = ANNA.live ? "migraine-forecast-app-live" : "migraine-forecast-app-v1";
+const fresh = () => ({ now: { date: OUT.made, slot: "evening" }, tab: "today", logs: {}, answers: {}, auto: {}, autoLast: null,
+  plan: {}, remind: true, hist: "6w", month: OUT.made.slice(0, 7), sel: null, sent: false });
 let S = (() => { try { return Object.assign(fresh(), JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) { return fresh(); } })();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable: session only */ } };
 
@@ -343,7 +344,7 @@ function riskChart() {
 }
 
 function history6m() {
-  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"].filter(m => m <= T().slice(0, 7));
+  const months = MONTHS.filter(m => m <= T().slice(0, 7));
   const counts = months.map(m => past().filter(d => d.date.startsWith(m) && logOf(d.date)).length), max = Math.max(...counts, 1);
   const all = past(), worn = all.filter(d => d.sleep != null).length, total = counts.reduce((a, b) => a + b, 0);
   const out = [card(`<div class="score"><div><b>${total}</b><span>attacks logged since 1 Jan</span></div>
@@ -539,7 +540,7 @@ SHEETS.report = () => {
   const ints = ["Mild", "Moderate", "Severe"].map(x => [x, logs.filter(l => l.int === x).length]);
   const medDays = logs.filter(l => (l.meds || []).some(m => m !== "Nothing")).length, trip = logs.filter(l => (l.meds || []).includes("Triptan")).length;
   const sc = forecastScore(), per = att.filter(inPeriodWindow).length, worn = all.filter(d => d.sleep != null).length;
-  const byMonth = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"].map(m => [fmt(m + "-15", { month: "short" }), att.filter(d => d.date.startsWith(m)).length]);
+  const byMonth = MONTHS.slice(-6).map(m => [fmt(m + "-15", { month: "short" }), att.filter(d => d.date.startsWith(m)).length]);
   const maxM = Math.max(...byMonth.map(x => x[1]), 1);
   const paper = `<div class="paper"><div class="ph"><div><h3>Migraine summary</h3><div class="meta">Anna, ${P.age} · ${fmt(all[0].date, { day: "numeric", month: "short" })} – ${fmt(T(), { day: "numeric", month: "short", year: "numeric" })}</div></div><div class="meta" style="text-align:right">Migrai<br>Generated ${fmt(T(), { day: "numeric", month: "short" })}</div></div>
     <div class="kpis"><div><b>${att.length}</b><span>attacks logged</span></div><div><b>${(att.length / months).toFixed(1)}</b><span>per month</span></div><div><b>${(medDays / months).toFixed(1)}</b><span>medication days / month</span></div></div>
@@ -613,6 +614,7 @@ function renderPicker() {
   }, "");
   $("picker").innerHTML = html;
   $("mpop").innerHTML = `<div class="picker">${html}</div><div class="picker-foot"><span>Demo: choose Anna's "now"</span><button class="linkbtn" data-act="reset">Reset demo</button></div>`;
+  if (ANNA.live) $("picker").insertAdjacentHTML("beforeend", `<button class="linkbtn" data-act="nextDay">Sync next day from watch</button>`);
   $("mpick").innerHTML = ic("clock"); $("mpick").title = `Demo time: ${shortDate(T())} ${timeAt()}`;
 }
 function setNow(date, slot) {
@@ -666,7 +668,8 @@ const ACT = {
   send: () => { if (!S.sent) { S.sent = true; render(); toast("Report sent securely", "shield"); } },
   print: () => { $("printReport").innerHTML = $("sheetBody").querySelector(".paper").outerHTML; window.print(); },
   profile: () => openSheet("profile"),
-  reset: () => { S = fresh(); try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } shownRisk = 0; closeSheet(); $("mpop").classList.remove("on"); render(true); toast("Demo reset", "undo"); },
+  nextDay: () => fetch("/next", { method: "POST" }).then(() => { S.now = { date: addDays(OUT.made, 1), slot: "evening" }; save(); location.reload(); }),
+  reset: () => { if (ANNA.live) { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } fetch("/reset", { method: "POST" }).then(() => location.reload()); return; } S = fresh(); try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } shownRisk = 0; closeSheet(); $("mpop").classList.remove("on"); render(true); toast("Demo reset", "undo"); },
   tryWhy: () => { S.tab = "today"; render(true); const d = drivers(T(), isEve())[0]; setTimeout(() => d ? openSheet("signal", { k: d.k }) : openSheet("allSignals"), 300); },
   tryLog: () => { S.tab = "checkin"; closeSheet(); render(true); },
   tryHistory: () => { S.tab = "history"; S.hist = "6w"; closeSheet(); render(true); },
