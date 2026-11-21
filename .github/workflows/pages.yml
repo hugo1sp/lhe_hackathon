@@ -30,6 +30,9 @@ jobs:
       # Static previews: the Migrai app at /migrai and the "A week with Anna" prototype at /followanna.
       # The prototype is also the main page; the forecast page moves to /forecast.html.
       - run: |
+          .venv/bin/python demo_model/build_data.py
+          mkdir -p docs/followanna-model
+          cp demo_model/*.html demo_model/*.js demo_model/*.css docs/followanna-model/
           mkdir -p docs/migrai docs/followanna
           cp app/*.html app/*.js app/*.css app/*.svg docs/migrai/
           cp prototype/*.html prototype/*.js docs/followanna/
