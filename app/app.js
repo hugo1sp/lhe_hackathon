@@ -1,5 +1,5 @@
 "use strict";
-/* Migraine Forecast - interactive app UI preloaded with simulated person P0187 ("Anna").
+/* Migrai - interactive app UI preloaded with simulated person P0187 ("Anna").
    All physiology, logged attacks and forecasts come from anna_data.js. Everything Anna does in the
    app (logs, answers, checklists) is kept in session state, saved to localStorage when available. */
 
@@ -175,7 +175,7 @@ const QDEF = {
   checkin: { why: "Quick check, nothing asked for a few days", text: "Any migraine today?", opts: ["No", "Yes"] },
   feel: { why: "Daily check-in · optional", text: "How are you feeling today?", opts: ["Great", "Fine", "A bit off", "Bad", "Migraine"] },
 };
-const FACES = { Great: "#2fbf84", Fine: "#9bd8b9", "A bit off": "#f2a93b", Bad: "#ff8a6b", Migraine: "#f25c5a" };
+const FACES = { Great: "#4fa38a", Fine: "#a9d3c6", "A bit off": "#e0a245", Bad: "#e5876f", Migraine: "#d9645a" };
 const SIGNAL_NAMES = { hrv_rmssd: "HRV", resting_hr: "resting heart rate", sleep_hours: "sleep" };
 const MIG_ANSWER = { Mild: "Mild", Moderate: "Moderate", Severe: "Severe", Yes: null, Headache: null, Migraine: null };
 function questionOf(date) {
@@ -321,24 +321,24 @@ function riskChart() {
   const end = fc(addDays(T(), 1)) ? addDays(T(), 1) : T(), dates = [];
   for (let s = addDays(T(), -41); s <= end; s = addDays(s, 1)) dates.push(s);
   const Wd = 334, H = 200, l = 30, r = 4, t = 20, b = 22, iw = Wd - l - r, ih = H - t - b, bw = iw / dates.length, y = v => t + ih - v / 0.8 * ih;
-  let g = [0, 0.15, 0.4, 0.8].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${y(v)}" y2="${y(v)}" stroke="${v ? "#eceef3" : "#d3d7e1"}" ${v && v < 0.8 ? 'stroke-dasharray="3 3"' : ""}/>
-    <text x="${l - 6}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="#6f788c">${pct(v)}</text>`).join("");
+  let g = [0, 0.15, 0.4, 0.8].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${y(v)}" y2="${y(v)}" stroke="${v ? "#ece8e2" : "#d8d3cb"}" ${v && v < 0.8 ? 'stroke-dasharray="3 3"' : ""}/>
+    <text x="${l - 6}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="#6e6980">${pct(v)}</text>`).join("");
   dates.forEach((ds, i) => {
     const d = day(ds), f = fc(ds), x = l + i * bw, lg = logOf(ds), fut = ds > T(), sel = S.sel === ds;
-    let col = `<rect class="hit" x="${x}" y="${t - 14}" width="${bw}" height="${ih + 14}" fill="${sel ? "rgba(79,95,224,.10)" : "transparent"}" rx="3"/>`;
-    if (d && d.sleep == null && !fut) col += `<rect x="${x + 1}" y="${y(0) - 6}" width="${bw - 2}" height="6" rx="1.5" fill="#d3d7e1"/>`;
+    let col = `<rect class="hit" x="${x}" y="${t - 14}" width="${bw}" height="${ih + 14}" fill="${sel ? "rgba(107,92,165,.10)" : "transparent"}" rx="3"/>`;
+    if (d && d.sleep == null && !fut) col += `<rect x="${x + 1}" y="${y(0) - 6}" width="${bw - 2}" height="6" rx="1.5" fill="#d8d3cb"/>`;
     if (f) {
       const hh = Math.max(y(0) - y(f.p), 2), c = `var(--${level(f.p).k})`;
       col += fut ? `<rect x="${x + 1.5}" y="${y(f.p)}" width="${bw - 3}" height="${hh}" rx="2.5" fill="none" stroke="${c}" stroke-width="1.5" stroke-dasharray="3 2"/>`
         : `<rect x="${x + 1}" y="${y(f.p)}" width="${bw - 2}" height="${hh}" rx="2.5" fill="${c}" opacity="${lg || sel ? 1 : .55}"/>`;
     }
-    if (lg) col += `<circle cx="${x + bw / 2}" cy="${y(f ? f.p : 0) - 8}" r="4" fill="#11141b" stroke="#fff" stroke-width="1.5"/>`;
-    if (ds === T()) col += `<text x="${Math.min(x + bw / 2, Wd - 16)}" y="${H - 6}" font-size="10" font-weight="700" text-anchor="middle" fill="#11141b">Today</text>`;
-    else if (i % 14 === 6 && i < dates.length - 8) col += `<text x="${x + bw / 2}" y="${H - 6}" font-size="10" text-anchor="middle" fill="#6f788c">${fmt(ds, { day: "numeric", month: "short" })}</text>`;
+    if (lg) col += `<circle cx="${x + bw / 2}" cy="${y(f ? f.p : 0) - 8}" r="4" fill="#1f1d2b" stroke="#fff" stroke-width="1.5"/>`;
+    if (ds === T()) col += `<text x="${Math.min(x + bw / 2, Wd - 16)}" y="${H - 6}" font-size="10" font-weight="700" text-anchor="middle" fill="#1f1d2b">Today</text>`;
+    else if (i % 14 === 6 && i < dates.length - 8) col += `<text x="${x + bw / 2}" y="${H - 6}" font-size="10" text-anchor="middle" fill="#6e6980">${fmt(ds, { day: "numeric", month: "short" })}</text>`;
     g += `<g class="col" data-act="day" data-date="${ds}" role="button" aria-label="${shortDate(ds)}${f ? ", forecast " + pct(f.p) : ""}${lg ? ", migraine" : ""}">${col}</g>`;
   });
   const first = dates.findIndex(ds => fc(ds));
-  if (first > 0) g += `<text x="${l + 4}" y="${y(0.5)}" font-size="10.5" fill="#6f788c">no forecasts before ${fmt(FIRST_FC, { day: "numeric", month: "short" })}</text>`;
+  if (first > 0) g += `<text x="${l + 4}" y="${y(0.5)}" font-size="10.5" fill="#6e6980">no forecasts before ${fmt(FIRST_FC, { day: "numeric", month: "short" })}</text>`;
   return `<svg class="chart" viewBox="0 0 ${Wd} ${H}" width="100%" role="img" aria-label="Daily forecast risk for the last six weeks">${g}</svg>`;
 }
 
@@ -360,7 +360,7 @@ function history6m() {
   }
   out.push(card(`<div class="mhead"><button class="iconbtn" data-act="month" data-m="${months[mi - 1] || ""}" ${mi > 0 ? "" : "disabled"} aria-label="Previous month">${ic("left")}</button>
     <b>${fmt(first, { month: "long", year: "numeric" })}</b><button class="iconbtn" data-act="month" data-m="${months[mi + 1] || ""}" ${mi < months.length - 1 ? "" : "disabled"} aria-label="Next month">${ic("right")}</button></div>
-    <div class="cal">${cells}</div><div class="legend"><span><i style="background:var(--high)"></i>Migraine</span><span><i style="background:repeating-linear-gradient(45deg,#e3e6ec 0 2px,#fff 2px 4px)"></i>No watch data</span><span><i class="dotm" style="background:#e46aa0;width:6px;height:6px"></i>Period starts</span></div>`));
+    <div class="cal">${cells}</div><div class="legend"><span><i style="background:var(--high)"></i>Migraine</span><span><i style="background:repeating-linear-gradient(45deg,#e4e0d9 0 2px,#fff 2px 4px)"></i>No watch data</span><span><i class="dotm" style="background:#e46aa0;width:6px;height:6px"></i>Period starts</span></div>`));
   return out.join("");
 }
 
@@ -389,7 +389,7 @@ VIEWS.checkin = () => {
   } else out.push(card(`<div class="eyebrow auto">${ic("watch")}Detected by your watch</div><p class="muted" style="margin:0">Nothing to confirm. If your watch spots a day that looks like an attack, we'll ask you here.</p>`));
 
   const dq = quality(), R = 32, C = 2 * Math.PI * R;
-  out.push(card(h4("Your data quality", "last 30 days") + `<div class="dq-top"><div class="ring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="${R}" fill="none" stroke="#eef0f5" stroke-width="8"/>
+  out.push(card(h4("Your data quality", "last 30 days") + `<div class="dq-top"><div class="ring"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="${R}" fill="none" stroke="#efece6" stroke-width="8"/>
       <circle cx="38" cy="38" r="${R}" fill="none" stroke="var(--brand)" stroke-width="8" stroke-linecap="round" style="stroke-dasharray:${dq.score / 100 * C} ${C}"/></svg><b class="num">${dq.score}</b></div>
       <div><div class="t">${dq.score >= 85 ? "Excellent" : dq.score >= 70 ? "Good" : "Getting there"}</div><div class="s">Better data makes your forecast more personal and more reliable.</div></div></div>
     <div class="mrow"><span>Nights with watch</span><b>${dq.worn} / ${dq.days}</b></div><div class="meter"><i id="m1" style="--w:${dq.worn / dq.days * 100}%"></i></div>
@@ -424,12 +424,12 @@ function cycleView() {
   att.forEach(d => byDay[d.cd] = (byDay[d.cd] || 0) + 1);
   const inWin = att.filter(inPeriodWindow).length, t = day(T()), tp = cl - t.cd + 1;
   const cx = 66, cy = 66, R = 46, pt = (cd, r) => { const a = (cd - 1) / cl * 2 * Math.PI - Math.PI / 2; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
-  let g = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#eef0f5" stroke-width="12"/>`;
+  let g = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#efece6" stroke-width="12"/>`;
   const arc = (a0, a1, col) => { const [x0, y0] = pt(a0, R), [x1, y1] = pt(a1, R); return `<path d="M${x0} ${y0}A${R} ${R} 0 0 1 ${x1} ${y1}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round"/>`; };
   g += arc(cl - 1.5, cl + 0.5, "#f6c1d8") + arc(1, 3.5, "#f6c1d8");
   for (let cd = 1; cd <= cl; cd++) for (let k = 0; k < (byDay[cd] || 0); k++) { const [x, y] = pt(cd, R - 16 - k * 9); g += `<circle cx="${x}" cy="${y}" r="3.6" fill="var(--high)"/>`; }
   const [tx, ty] = pt(t.cd, R);
-  g += `<circle cx="${tx}" cy="${ty}" r="7" fill="#fff" stroke="#11141b" stroke-width="2.5"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#11141b">day ${t.cd}</text>`;
+  g += `<circle cx="${tx}" cy="${ty}" r="7" fill="#fff" stroke="#1f1d2b" stroke-width="2.5"/><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#1f1d2b">day ${t.cd}</text>`;
   return `<div class="cyc"><svg width="132" height="132" viewBox="0 0 132 132" role="img" aria-label="Attacks by cycle day">${g}</svg>
     <p><b>${inWin} of ${att.length}</b> attacks started between 2 days before and 3 days after your period began (pink). Red dots are attacks by cycle day.<br><br>${t.cd <= 3 ? `You're on day ${t.cd} of your period now.` : `Next period expected in about <b>${tp} days</b>; your forecast already accounts for it.`}</p></div>`;
 }
@@ -479,13 +479,13 @@ function trendChart(s) {
   const x = i => l + i * iw / (ds.length - 1), y = v => t + ih - (v - lo) / (hi - lo) * ih;
   const path = k => { let p = "", pen = false; ds.forEach((d, i) => { if (d[k] == null) { pen = false; return; } p += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(d[k]).toFixed(1); pen = true; }); return p; };
   const f = v => key === "mid" ? clock(v) : key === "sleep" ? v.toFixed(1) + "h" : key === "steps" ? Math.round(v / 1000) + "k" : Math.round(v);
-  let g = [lo + (hi - lo) * .2, lo + (hi - lo) * .8].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${y(v)}" y2="${y(v)}" stroke="#eceef3"/><text x="${l - 6}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="#6f788c">${f(v)}</text>`).join("");
+  let g = [lo + (hi - lo) * .2, lo + (hi - lo) * .8].map(v => `<line x1="${l}" x2="${Wd - r}" y1="${y(v)}" y2="${y(v)}" stroke="#ece8e2"/><text x="${l - 6}" y="${y(v) + 3.5}" font-size="10" text-anchor="end" fill="#6e6980">${f(v)}</text>`).join("");
   ds.forEach((d, i) => { if (logOf(d.date)) g += `<rect x="${x(i) - 4}" y="${t}" width="8" height="${ih}" rx="3" fill="var(--high-soft)"/>`; });
   g += `<path d="${path("b_" + key)}" fill="none" stroke="#9aa1b1" stroke-width="1.5" stroke-dasharray="4 3"/>`;
   g += `<path d="${path(key)}" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const L = ds.length - 1;
   if (ds[L][key] != null) g += `<circle cx="${x(L)}" cy="${y(ds[L][key])}" r="5" fill="var(--brand)" stroke="#fff" stroke-width="2"/>`;
-  [0, 14, L].forEach(i => g += `<text x="${x(i)}" y="${H - 4}" font-size="10" text-anchor="${i === 0 ? "start" : i === L ? "end" : "middle"}" fill="#6f788c">${fmt(ds[i].date, { day: "numeric", month: "short" })}</text>`);
+  [0, 14, L].forEach(i => g += `<text x="${x(i)}" y="${H - 4}" font-size="10" text-anchor="${i === 0 ? "start" : i === L ? "end" : "middle"}" fill="#6e6980">${fmt(ds[i].date, { day: "numeric", month: "short" })}</text>`);
   return `<svg class="chart" viewBox="0 0 ${Wd} ${H}" width="100%" role="img" aria-label="${s.name} over four weeks">${g}</svg>
     <div class="legend"><span><i style="background:var(--brand);height:3px"></i>${s.name}</span><span><i class="dash"></i>Your normal</span><span><i style="background:var(--high-soft)"></i>Migraine day</span></div>`;
 }
@@ -541,9 +541,9 @@ SHEETS.report = () => {
   const sc = forecastScore(), per = att.filter(inPeriodWindow).length, worn = all.filter(d => d.sleep != null).length;
   const byMonth = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"].map(m => [fmt(m + "-15", { month: "short" }), att.filter(d => d.date.startsWith(m)).length]);
   const maxM = Math.max(...byMonth.map(x => x[1]), 1);
-  const paper = `<div class="paper"><div class="ph"><div><h3>Migraine summary</h3><div class="meta">Anna, ${P.age} · ${fmt(all[0].date, { day: "numeric", month: "short" })} – ${fmt(T(), { day: "numeric", month: "short", year: "numeric" })}</div></div><div class="meta" style="text-align:right">Migraine Forecast<br>Generated ${fmt(T(), { day: "numeric", month: "short" })}</div></div>
+  const paper = `<div class="paper"><div class="ph"><div><h3>Migraine summary</h3><div class="meta">Anna, ${P.age} · ${fmt(all[0].date, { day: "numeric", month: "short" })} – ${fmt(T(), { day: "numeric", month: "short", year: "numeric" })}</div></div><div class="meta" style="text-align:right">Migrai<br>Generated ${fmt(T(), { day: "numeric", month: "short" })}</div></div>
     <div class="kpis"><div><b>${att.length}</b><span>attacks logged</span></div><div><b>${(att.length / months).toFixed(1)}</b><span>per month</span></div><div><b>${(medDays / months).toFixed(1)}</b><span>medication days / month</span></div></div>
-    <h5>Attacks per month</h5><svg viewBox="0 0 300 66" width="100%">${byMonth.map(([m, n], i) => `<rect x="${i * 50 + 12}" y="${50 - n / maxM * 36}" width="26" height="${n / maxM * 36 + .5}" rx="3" fill="#f25c5a"/><text x="${i * 50 + 25}" y="62" font-size="9" text-anchor="middle" fill="#5d6475">${m}</text><text x="${i * 50 + 25}" y="${46 - n / maxM * 36}" font-size="9" font-weight="700" text-anchor="middle" fill="#1b1e27">${n}</text>`).join("")}</svg>
+    <h5>Attacks per month</h5><svg viewBox="0 0 300 66" width="100%">${byMonth.map(([m, n], i) => `<rect x="${i * 50 + 12}" y="${50 - n / maxM * 36}" width="26" height="${n / maxM * 36 + .5}" rx="3" fill="#d9645a"/><text x="${i * 50 + 25}" y="62" font-size="9" text-anchor="middle" fill="#5f5b6e">${m}</text><text x="${i * 50 + 25}" y="${46 - n / maxM * 36}" font-size="9" font-weight="700" text-anchor="middle" fill="#1b1e27">${n}</text>`).join("")}</svg>
     <h5>Attacks</h5><table>${ints.map(([x, n]) => `<tr><td>${x}</td><td>${n}</td></tr>`).join("")}<tr><td>Intensity not recorded</td><td>${logs.filter(l => !l.int).length}</td></tr><tr><td>Treated with a triptan</td><td>${trip}</td></tr></table>
     <h5>Patterns</h5><table><tr><td>Within −2 to +3 days of period start</td><td>${per} of ${att.length}</td></tr>
       <tr><td>Strongest personal triggers</td><td>${Object.entries(W).sort((a, b) => b[1] - a[1]).slice(0, 2).map(e => TRIG[e[0]].name.toLowerCase()).join(", ")}</td></tr>
@@ -556,7 +556,7 @@ SHEETS.report = () => {
     <p class="muted" style="text-align:center;margin:0">${ic("shield")} You choose what to share. The link expires after 7 days.</p></div>`;
 };
 
-SHEETS.profile = () => sheetHead("Anna", `${P.age} · using Migraine Forecast for 6 months`) + `<div class="stack">
+SHEETS.profile = () => sheetHead("Anna", `${P.age} · using Migrai for 6 months`) + `<div class="stack">
   ${card(`<div class="rows">${row("watch", "good", "Watch connected", `Synced at ${timeAt()} · battery 64%`)}${row("bell", "", "Wear-your-watch reminder", "Evenings at 22:30", `<span class="toggle ${S.remind ? "on" : ""}"></span>`, `data-act="remind" role="switch" aria-checked="${S.remind}"`)}${row("shield", "", "Your data stays yours", "Shared only when you choose")}</div>`)}
   ${card(`<p class="sh-text">This is a demo with <b>simulated data</b> for person P0187 from our simulator. Physiology and forecasts come from the data; times of day and check-in answers are illustrative.</p>`)}
   <button class="btn block ghost-danger" data-act="reset">${ic("undo")}Reset demo data</button></div>`;
@@ -585,7 +585,7 @@ function banner() {
   const title = isEve() ? (f ? `Tomorrow: ${level(f.p).txt.toLowerCase()} risk (${pct(f.p)})` : "Your evening summary is ready") : `Good morning, Anna`;
   const body = isEve() ? (f && f.p >= 0.4 ? "Tap to see why, and how to prepare tonight." : "Your evening forecast is ready.")
     : `You slept ${hm(d.sleep)}. Migraine risk today: ${f ? pct(f.p) + " (" + level(f.p).txt.toLowerCase() + ")" : "no forecast"}.`;
-  b.innerHTML = `<div class="ai">${ic("wave")}</div><div><div class="nh"><span>Migraine Forecast</span><span>now</span></div><b>${title}</b><p>${body}</p></div>`;
+  b.innerHTML = `<div class="ai">${ic("wave")}</div><div><div class="nh"><span>Migrai</span><span>now</span></div><b>${title}</b><p>${body}</p></div>`;
   b.classList.add("on"); clearTimeout(bannerT); bannerT = setTimeout(() => b.classList.remove("on"), 4200);
 }
 
