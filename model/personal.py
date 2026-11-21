@@ -18,8 +18,11 @@ Model: logistic regression on top of the base forecast,
 w_u gets a Gaussian prior centred on a population layer w_pop (fit on other users),
 which in turn is shrunk towards 0. A new user with few answers therefore gets
 base + population effects of their answers; w_u moves away from w_pop only as far as
-their own answers support. Unknown answers are encoded as "no information" (all
-indicators 0), never as "No".
+their own answers support. Every input is optional: unknown answers are "no
+information" (all indicators 0, never "No"), the cycle window is 0 for users without
+a cycle, and there is no intercept, so a user with no inputs gets exactly p_base.
+(Without an intercept the layer does not fix the base's calibration; that belongs in
+the base model.)
 
 Evaluation (scored on `true_migraine` for every day, answered or not):
   - Population layer: 5-fold person-grouped (w_pop never sees the test user).
@@ -80,7 +83,6 @@ def build(daily, labels, base):
     prodrome = d["prodrome"] / 2
 
     X = pd.DataFrame({
-        "intercept": 1.0,
         # history from answers
         "label_yes": yes("label"),
         "label_no": (d["label"] == 0).astype(float),
@@ -203,7 +205,7 @@ def main():
               f"{s[0]:.3f}    {s[1]:.3f}   {s[2]:.4f}   {s[0] - base_auc:+.3f}")
 
     print("\nPopulation layer: largest effects on top of the base (log-odds per unit):")
-    for name, v in w_pop.drop("intercept").sort_values(key=abs, ascending=False).head(8).items():
+    for name, v in w_pop.sort_values(key=abs, ascending=False).head(8).items():
         print(f"  {name:<22} {v:+.2f}")
 
 
