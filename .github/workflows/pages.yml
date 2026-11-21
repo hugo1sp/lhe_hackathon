@@ -32,7 +32,7 @@ jobs:
       - run: |
           .venv/bin/python demo_model/build_data.py
           mkdir -p docs/followanna-model
-          cp demo_model/*.html demo_model/*.js demo_model/*.css docs/followanna-model/
+          cp demo_model/*.html demo_model/*.js docs/followanna-model/
           mkdir -p docs/migrai docs/followanna
           cp app/*.html app/*.js app/*.css app/*.svg docs/migrai/
           cp prototype/*.html prototype/*.js docs/followanna/
