@@ -9,8 +9,13 @@ Output data/labels.csv has one row per person-day with any input, columns
 person_id, date, question, answer + questions.FIELDS. Join it with daily.csv
 on (person_id, date); days without a row, and empty fields, are unknown.
 
+The policy sees only what the app would know: the model's forecast p_base from
+--risk (a CSV with person_id,date,p_base, e.g. data/base_oof.csv), never the
+simulator's true risk. Without --risk there is no forecast yet (bootstrap pass),
+so the forecast-driven "prodrome" question never fires.
+
 Usage:
-  python collection/simulate_answers.py --data data --seed 0
+  python collection/simulate_answers.py --data data --seed 0 [--risk data/base_oof.csv]
 """
 
 import argparse
@@ -70,14 +75,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--risk", help="CSV with person_id,date,p_base: the forecast the policy sees")
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
 
     daily = pd.read_csv(Path(args.data) / "daily.csv")
+    if args.risk:
+        daily = daily.merge(pd.read_csv(args.risk)[["person_id", "date", "p_base"]],
+                            on=["person_id", "date"], how="left")
+    else:
+        daily["p_base"] = np.nan
     rows = []
     for _, d in daily.groupby("person_id"):
         d = add_truth(d.reset_index(drop=True), rng)
-        for q, r in zip(pick_questions(d, d["true_risk"].to_numpy()), d.itertuples()):
+        for q, r in zip(pick_questions(d, d["p_base"].to_numpy()), d.itertuples()):
             row = respond(r, q, rng)
             if row:
                 rows.append(row)
