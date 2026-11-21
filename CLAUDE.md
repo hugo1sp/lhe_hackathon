@@ -76,6 +76,15 @@ Our edge: data collection is the major bottleneck for existing solutions, so we 
 
 Status: concept and context only. Architecture, feasibility, and technical direction are still to be discussed. Do not implement anything or choose technologies until the team decides.
 
+## Hackathon judging
+
+Theme: Hacking Healthcare AI.
+
+- Technical Execution: 40 %
+- Impact: 30 %
+- Innovation: 20 %
+- Presentation: 10 %
+
 ## Git workflow
 
 We all work on `main` (no branches, no PR review). Claude handles git.
