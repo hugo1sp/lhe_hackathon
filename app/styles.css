@@ -373,3 +373,11 @@ body.mobile .mpop.on { display: block; position: fixed; right: 12px; left: 12px;
   #printReport .paper { box-shadow: none; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* One-tap log button at the top of Today */
+.logcta { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; border-radius: 20px; text-align: left; color: #fff;
+  background: linear-gradient(135deg, #e0756a, var(--high)); box-shadow: 0 10px 24px -10px rgba(217,100,90,.7); transition: transform .15s; }
+.logcta:active { transform: scale(.97); }
+.logcta .lc-ic { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.2); font-size: 24px; flex: none; }
+.logcta b { display: block; font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.logcta small { display: block; font-size: 13px; opacity: .85; }

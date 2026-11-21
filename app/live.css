@@ -1,0 +1,77 @@
+/* Live mode (live.js): side panel with clock, watch stream, feed and accuracy chart, plus a live card in the app. */
+.lv-switch { display: inline-flex; gap: 4px; padding: 4px; margin: 22px 0 0; border-radius: 99px; background: var(--panel); border: 1px solid var(--panel-line); }
+.lv-switch button { padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--tx-2); display: inline-flex; align-items: center; gap: 8px; transition: background .2s, color .2s; }
+.lv-switch button.on { background: var(--tx); color: var(--bg); }
+.lv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--high); }
+body.live .lv-dot { animation: lvpulse 1.6s infinite; }
+@keyframes lvpulse { 0% { box-shadow: 0 0 0 0 rgba(217,100,90,.6); } 70%, 100% { box-shadow: 0 0 0 8px rgba(217,100,90,0); } }
+
+.lv { display: none; flex-direction: column; gap: 12px; margin-top: 16px; }
+body.live .lv { display: flex; }
+body.live .pitch, body.live .picker-h, body.live #picker, body.live .picker-foot { display: none; }
+
+.lv-top { display: flex; align-items: flex-end; justify-content: space-between; }
+.lv-clock { font-size: 56px; font-weight: 300; letter-spacing: -.03em; line-height: 1; }
+.lv-date { font-size: 13.5px; color: var(--tx-2); margin-top: 6px; }
+.lv-state { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 5px 11px; border-radius: 99px; margin-bottom: 6px; }
+.lv-state.ok { background: rgba(79,163,138,.18); color: #8fd6c0; }
+.lv-state.sleep { background: rgba(91,111,168,.3); color: #c6d0f0; }
+.lv-state.bad { background: rgba(217,100,90,.25); color: #ffb3aa; }
+.lv-ctl { display: flex; gap: 4px; flex-wrap: nowrap; }
+.lv-ctl button { padding: 5px 8px; white-space: nowrap; border-radius: 99px; font-size: 12px; font-weight: 600; background: var(--panel); border: 1px solid var(--panel-line); color: var(--tx-2); }
+.lv-ctl button:hover { background: rgba(255,255,255,.08); }
+.lv-ctl button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.lv-ctl #lvPause { min-width: 52px; }
+
+.lv-box { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 18px; padding: 12px 14px; }
+.lv-h { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tx-3); margin-bottom: 6px; }
+.lv-h span + span { letter-spacing: 0; text-transform: none; font-weight: 500; }
+#lvSpark .sp { fill: none; stroke: #ff8f86; stroke-width: 2; stroke-linejoin: round; }
+#lvSpark .spd { fill: #ff8f86; stroke: var(--bg); stroke-width: 2; }
+.lv-vals { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--tx-2); margin-top: 4px; }
+.lv-vals span { display: inline-flex; align-items: center; gap: 5px; }
+.lv-vals b { color: var(--tx); font-size: 15px; }
+
+.lv-feed { height: 132px; overflow: hidden; display: flex; flex-direction: column; gap: 2px;
+  -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
+.lv-row { display: grid; grid-template-columns: 42px 16px 1fr; gap: 8px; align-items: center; font-size: 12.5px; color: var(--tx-2); padding: 3px 4px; animation: lvin .35s var(--ease); }
+.lv-row .num { color: var(--tx-3); font-size: 11.5px; }
+.lv-row.ev { color: var(--tx); } .lv-row.ev .i { color: var(--accent); }
+.lv-row.bad { color: #ffb3aa; } .lv-row.bad .i { color: var(--high); }
+@keyframes lvin { from { opacity: 0; transform: translateY(-6px); } }
+
+#lvAcc text { font: 500 10px Inter, sans-serif; fill: var(--tx-3); }
+#lvAcc .grid { stroke: rgba(255,255,255,.08); }
+#lvAcc .gap { fill: rgba(179,166,224,.16); }
+#lvAcc .base { fill: none; stroke: #8790a3; stroke-width: 1.8; stroke-dasharray: 4 3; }
+#lvAcc .ans { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; }
+#lvAcc .anna { fill: var(--accent); stroke: var(--bg); stroke-width: 2.5; transform-box: fill-box; transform-origin: center; }
+#lvAcc .anna.pulse { animation: lvbump .9s var(--spring); }
+#lvAcc .annal { fill: var(--tx); font-weight: 700; }
+@keyframes lvbump { 40% { transform: scale(1.9); } }
+.lv-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--tx-2); margin-top: 2px; }
+.lv-legend i { display: inline-block; width: 14px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2.4px solid var(--accent); }
+.lv-legend i.base { border-top: 1.8px dashed #8790a3; }
+.lv-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--tx-3); }
+.lv-note b { color: var(--tx); font-weight: 600; }
+
+/* Live card inside the app (light theme) */
+.live-card { padding: 14px 16px; }
+.lc-h { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--ink); margin-bottom: 10px; }
+.lc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--high); animation: lvpulse 1.6s infinite; }
+.lc-t { margin-left: auto; font-weight: 500; color: var(--ink-3); font-size: 12px; }
+.lc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lc-grid div { background: var(--fill); border-radius: 12px; padding: 8px 10px; }
+.lc-grid span { display: block; font-size: 11px; color: var(--ink-3); }
+.lc-grid b { font-size: 21px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+.lc-grid small { font-size: 11px; color: var(--ink-3); margin-left: 3px; }
+.lv-ctl button:disabled { opacity: .35; cursor: default; }
+
+/* Phone only (button top right, or F) */
+.side { transition: opacity .5s var(--ease), visibility .5s; }
+body.phone-only .side { opacity: 0; visibility: hidden; }
+.po-btn { position: fixed; top: 14px; right: 14px; z-index: 20; padding: 7px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 600;
+  color: var(--tx-2); background: var(--panel); border: 1px solid var(--panel-line); transition: opacity .3s; }
+.po-btn:hover { color: var(--tx); background: rgba(255,255,255,.08); }
+body.phone-only .po-btn { opacity: .15; } body.phone-only .po-btn:hover { opacity: 1; }
+body.mobile .po-btn { display: none; }

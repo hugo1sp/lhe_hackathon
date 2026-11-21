@@ -250,6 +250,7 @@ VIEWS.today = () => {
 
   if (log) out.push(card(`<div class="ri">${ic("check")}</div><div><b>Migraine at ${log.t}</b><span class="muted">${log.int ? logText(log) : `${{ watch: "Confirmed on your watch", tap: "Logged with one tap", "check-in": "From your check-in", detected: "Auto-detected" }[log.src]} · details optional`}</span></div>
     <button class="btn small ${log.int ? "soft" : "dark"}" data-act="details" data-date="${T()}">${log.int ? "Edit" : "Add details"}</button>`, "attack-card"));
+  else out.push(`<button class="logcta" data-act="logNow"><span class="lc-ic">${ic("bolt")}</span><span><b>Log migraine</b><small>One tap · details later</small></span></button>`);
 
   out.push(card(`<div class="hero-top"><div class="hero-lab">${isEve() ? "Migraine risk tomorrow" : "Migraine risk today"}<small>${longDate(hd)}</small></div>
       <button class="info" data-act="explain" aria-label="What does this number mean?">${ic("info")}</button></div>
