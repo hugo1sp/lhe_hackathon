@@ -1,46 +1,86 @@
 # CLAUDE.md
 
-Riktlinjer för att minska vanliga LLM-misstag vid kodning. Bygger på Andrej Karpathys observationer (via forrestchang/andrej-karpathy-skills). De prioriterar försiktighet framför fart; för triviala uppgifter, använd eget omdöme.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## 1. Tänk innan du kodar
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-- Säg ut dina antaganden. Fråga om något är oklart.
-- Finns flera tolkningar: presentera dem istället för att tyst välja en.
-- Finns ett enklare sätt: föreslå det.
+## 1. Think Before Coding
 
-## 2. Enkelhet först
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-- Skriv bara det som efterfrågats. Inga spekulativa features.
-- Inga onödiga abstraktioner eller konfigurerbarhet som ingen bett om.
-- Ser något överkomplicerat ut: förenkla.
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## 3. Kirurgiska ändringar
+## 2. Simplicity First
 
-- Rör bara det uppgiften kräver. Följ befintlig stil.
-- Refaktorera inte fungerande kod i förbigående.
-- Upptäcker du orelaterad död kod: nämn den, ta inte bort den.
-- Ta bara bort oanvänd kod som dina egna ändringar skapat.
+**Minimum code that solves the problem. Nothing speculative.**
 
-## 4. Målstyrd körning
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
 
-- Gör om uppgifter till verifierbara mål (t.ex. skriv ett test som återskapar buggen, sen fixa den).
-- Vid flerstegsarbete: ange en kort plan med en kontroll per steg.
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## Projektregler (hackathon)
+## 3. Surgical Changes
 
-Flera personer jobbar samtidigt direkt på `main` (inga branches, ingen PR-granskning). Claude sköter all git-hantering.
+**Touch only what you must. Clean up only your own mess.**
 
-### Git-arbetsflöde
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
 
-- **Kör alltid `git pull --rebase origin main` innan du ändrar något**, och igen innan varje push.
-- Gör små commits och pusha ofta, så ändringar inte hinner divergera.
-- **Pusha automatiskt (utan att fråga) varje gång en ändring är klar och fungerar.** Kontrollera först att koden körs och att tester (om det finns) går igenom. Pusha aldrig trasig eller halvfärdig kod.
-- Om pull ger konflikter: läs båda sidornas ändringar, behåll allas arbete, lös konflikten, kör `git rebase --continue`. Fråga bara om det är oklart vilken version som ska gälla.
-- Om push avvisas: kör `git pull --rebase origin main` och pusha igen.
-- Använd aldrig `git push --force` eller `git reset --hard` på `main`.
-- Skapa inga branches om användaren inte ber om det.
-- Committa aldrig `.env` eller andra hemligheter.
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
 
-### Språk
+The test: Every changed line should trace directly to the user's request.
 
-Kommunicera på svenska.
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+---
+
+# Project-Specific Instructions
+
+Several people work at the same time directly on `main` (no branches, no PR review). Claude handles all git operations.
+
+## Git workflow
+
+- **Always run `git pull --rebase origin main` before changing anything**, and again before every push.
+- Make small commits and push often so changes don't diverge.
+- **Push automatically (without asking) whenever a change is complete and working.** First verify the code runs and tests (if any) pass. Never push broken or half-finished code.
+- If a pull causes conflicts: read both sides, keep everyone's work, resolve the conflict, run `git rebase --continue`. Only ask the user if it's unclear which version should win.
+- If a push is rejected: run `git pull --rebase origin main` and push again.
+- Never use `git push --force` or `git reset --hard` on `main`.
+- Don't create branches unless the user asks.
+- Never commit `.env` or other secrets.
+
+## Language
+
+Communicate with the user in Swedish. Code, comments, and docs are written in English.
