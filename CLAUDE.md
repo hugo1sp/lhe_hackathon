@@ -76,8 +76,6 @@ Our edge: data collection is the major bottleneck for existing solutions, so we 
 
 Status: concept and context only. Architecture, feasibility, and technical direction are still to be discussed. Do not implement anything or choose technologies until the team decides.
 
-Several people work at the same time directly on `main` (no branches, no PR review). Claude handles all git operations.
-
 ## Git workflow
 
 We all work on `main` (no branches, no PR review). Claude handles git.
