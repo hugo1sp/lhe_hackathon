@@ -8,13 +8,22 @@ non-wear) plus the day of week of the target day (known in advance). No cycle
 day, sex, age or migraine history: those belong to the per-user personal
 layer (model/personal.py), which builds on p_base.
 
-The target is the answered migraine label for day t+h (labels.csv); days
-without an answer are not used for training. Evaluation uses 5-fold CV grouped
-by person and scores against ground-truth attacks (`true_migraine`) on every
-day, including days the user never answered.
+The target is the user's own record for day t+h, read like a diary: a logged
+or answered migraine is 1, every other day 0. Training only on answered days
+would bias the forecast upwards: most positive labels come from "Log migraine
+now" taps, which happen only on attack days, so answered days are ~44 %
+migraine against ~20 % in truth. That selection depends on the outcome itself,
+so it cannot be weighted away; unanswered days are ~97 % attack-free, so
+counting them as 0 keeps the forecast close to the true rate (slightly below,
+by the share of attacks never logged).
+
+Evaluation uses 5-fold CV grouped by person and scores against ground-truth
+attacks (`true_migraine`) on every day (model/metrics.py). `true_migraine` is
+never used for training. Reference rows: each person's own attack frequency
+from their records up to day t, and the simulator's true risk.
 
 Outputs:
-  data/model_base_d{1,2,3}.txt  LightGBM per horizon, trained on all labelled days
+  data/model_base_d{1,2,3}.txt  LightGBM per horizon, trained on all person-days
   data/base_oof.csv             person_id,date,p_base,p_base_d2,p_base_d3: out-of-fold
                                 P(migraine on date+1 / +2 / +3) for every person-day
                                 kept by build_features (p_base is next day)
@@ -30,12 +39,13 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier
-from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import GroupKFold
+
+from metrics import report
 
 WEARABLE_COLS = ["sleep_hours", "sleep_efficiency", "sleep_midpoint_h",
                  "resting_hr", "hrv_rmssd", "steps", "stress_score"]
-PARAMS = dict(n_estimators=600, learning_rate=0.02, num_leaves=15, min_child_samples=100,
+PARAMS = dict(n_estimators=300, learning_rate=0.02, num_leaves=7, min_child_samples=300,
               subsample=0.8, subsample_freq=1, colsample_bytree=0.6, verbose=-1)
 HORIZONS = [1, 2, 3]
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -48,8 +58,9 @@ def p_col(h):
 def build_features(daily, labels=None):
     """One row per person-day with 28 days of baseline; watch features known at the end of day t.
 
-    meta has person_id, date and, when available, y{h} (answered label for t+h)
-    and y_true{h} (true attack on t+h) for each horizon h.
+    meta has person_id, date and, when available, y{h} (recorded migraine on t+h,
+    unrecorded = 0), y_true{h} (true attack on t+h) for each horizon h, and
+    hist_rate (share of days up to t with a recorded migraine).
     """
     d = daily.sort_values(["person_id", "date"]).reset_index(drop=True)
     if labels is not None:
@@ -70,9 +81,12 @@ def build_features(daily, labels=None):
     X["nonwear"] = d["resting_hr"].isna().astype(int)
 
     meta = pd.DataFrame({"person_id": d["person_id"], "date": d["date"]})
+    if labels is not None:
+        recorded = (d["label"] == 1).astype(float)
+        meta["hist_rate"] = recorded.groupby(d["person_id"]).cumsum() / (g.cumcount() + 1)
     for h in HORIZONS:
         if labels is not None:
-            meta[f"y{h}"] = g["label"].shift(-h)
+            meta[f"y{h}"] = recorded.groupby(d["person_id"]).shift(-h)
         if "true_migraine" in d:
             meta[f"y_true{h}"] = g["true_migraine"].shift(-h)
     keep = (g.cumcount() >= 28).to_numpy()                    # need a personal baseline
@@ -95,41 +109,31 @@ def predict_base(daily, data=DATA_DIR):
 
 def train_horizon(X, meta, daily, h, data):
     X = with_dow(X, meta, h)
-    y, y_true_all = meta[f"y{h}"], meta[f"y_true{h}"]
-    labelled = y.notna().to_numpy()
-    print(f"\n=== {h} day(s) ahead ===")
-    print(f"{len(X)} person-days, {labelled.mean():.0%} with a known label for the target day, "
-          f"{X.shape[1]} features (watch + target weekday)")
+    y = meta[f"y{h}"]
+    train = y.notna().to_numpy()                              # last h days have no target day
+    print(f"\n=== {h} day(s) ahead: {X.shape[1]} features (watch + target weekday), "
+          f"recorded migraine rate {y.mean():.3f} ===")
 
     p = np.zeros(len(X))
     for tr, te in GroupKFold(5).split(X, groups=meta["person_id"]):
-        tr = tr[labelled[tr]]
+        tr = tr[train[tr]]
         model = LGBMClassifier(**PARAMS).fit(X.iloc[tr], y.iloc[tr].astype(int))
         p[te] = model.predict_proba(X.iloc[te])[:, 1]
 
-    scored = y_true_all.notna().to_numpy()                    # last h days have no target day
-    y_true, ps = y_true_all[scored].astype(int), p[scored]
-    rate = y_true.mean()
-    scores = {"roc_auc": roc_auc_score(y_true, ps), "pr_auc": average_precision_score(y_true, ps),
-              "brier": brier_score_loss(y_true, ps),
-              "brier_const": brier_score_loss(y_true, np.full(len(ps), rate))}
-    print(f"Person-grouped 5-fold CV, scored on true attacks every day (rate {rate:.3f})")
-    print(f"  ROC AUC  {scores['roc_auc']:.3f}   (random = 0.500)")
-    print(f"  PR AUC   {scores['pr_auc']:.3f}   (random = {rate:.3f})")
-    print(f"  Brier    {scores['brier']:.4f}  (constant base rate = {scores['brier_const']:.4f})")
-    risk = meta[scored].merge(daily[["person_id", "date", "true_risk"]].assign(
-        date=lambda x: x["date"] - pd.Timedelta(days=h)), on=["person_id", "date"])["true_risk"]
-    print(f"  Simulator's true risk, for reference: ROC AUC {roc_auc_score(y_true, risk):.3f}")
+    scored = meta[f"y_true{h}"].notna().to_numpy()
+    m = meta[scored]
+    risk = m.merge(daily[["person_id", "date", "true_risk"]].assign(
+        date=lambda x: x["date"] - pd.Timedelta(days=h)), on=["person_id", "date"], how="left")["true_risk"]
+    report(m[f"y_true{h}"], {"base (watch)": p[scored], "own attack history": m["hist_rate"],
+                             "simulator true risk": risk}, m["person_id"])
 
-    model = LGBMClassifier(**PARAMS).fit(X[labelled], y[labelled].astype(int))
+    model = LGBMClassifier(**PARAMS).fit(X[train], y[train].astype(int))
     path = data / f"model_base_d{h}.txt"
     model.booster_.save_model(path)
-    gain = model.booster_.feature_importance("gain")
-    print("Top features (gain share):")
-    for name, v in (pd.Series(gain, X.columns).nlargest(8) / gain.sum()).items():
-        print(f"  {name:<24} {v:.3f}")
-    print(f"Saved model to {path}")
-    return p, scores
+    gain = pd.Series(model.booster_.feature_importance("gain"), X.columns)
+    top = ", ".join(f"{k} {v:.2f}" for k, v in (gain / gain.sum()).nlargest(4).items())
+    print(f"  Top features (gain share): {top}. Saved {path}")
+    return p
 
 
 def main():
@@ -141,16 +145,12 @@ def main():
     labels = pd.read_csv(data / "labels.csv", parse_dates=["date"])
     X, meta = build_features(daily, labels)
 
-    oof, results = meta[["person_id", "date"]].copy(), {}
+    print("Person-grouped 5-fold CV, scored on true attacks on every day")
+    oof = meta[["person_id", "date"]].copy()
     for h in HORIZONS:
-        oof[p_col(h)], results[h] = train_horizon(X, meta, daily, h, data)
+        oof[p_col(h)] = train_horizon(X, meta, daily, h, data)
     oof.to_csv(data / "base_oof.csv", index=False, date_format="%Y-%m-%d")
     print(f"\nSaved out-of-fold predictions to {data / 'base_oof.csv'}")
-
-    print("\nSummary (person-grouped CV, true attacks):")
-    print("  days ahead  ROC AUC  PR AUC  Brier   Brier(const)")
-    for h, r in results.items():
-        print(f"  {h:>10}  {r['roc_auc']:.3f}    {r['pr_auc']:.3f}   {r['brier']:.4f}  {r['brier_const']:.4f}")
 
 
 if __name__ == "__main__":
