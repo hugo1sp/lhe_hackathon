@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Run the whole pipeline: set up environment, then run each step in order.
+# Usage: ./run.sh
+set -euo pipefail
+cd "$(dirname "$0")"
+
+if [ ! -d .venv ]; then
+  python3 -m venv .venv
+fi
+.venv/bin/pip install -q -r requirements.txt
+
+# 1. Generate synthetic data
+.venv/bin/python simulator/simulate.py --out data
+
+# 2. (next) Train model
