@@ -53,6 +53,8 @@ from scipy.optimize import minimize
 from sklearn.metrics import average_precision_score, brier_score_loss, roc_auc_score
 from sklearn.model_selection import GroupKFold
 
+from metrics import report
+
 WATCH = ["hrv_rmssd", "resting_hr", "sleep_hours", "stress_score", "steps"]
 WARMUP = 28     # days needed for the personal watch baseline
 REFIT = 1       # refit each user's layer daily, so every new answer updates their weights
@@ -190,13 +192,10 @@ def main():
     p_pop, p_per, w_pop = evaluate(X, meta, args.lam)
     y = meta["y_true"].astype(int).to_numpy()
 
-    print(f"{len(X)} person-days, {meta['person_id'].nunique()} users, {X.shape[1]} personal features, "
-          f"true attack rate {y.mean():.3f}")
-    print("Scored on true attacks on every day (answered or not); personal layer refit daily, walk-forward\n")
-    print(f"  {'model':<30} ROC AUC  PR AUC  Brier")
-    for name, p in [("base (watch only)", meta["p_base"]), ("base + population layer", p_pop),
-                    ("base + personal layer", p_per)]:
-        print(f"  {name:<30} {scores(y, p)[0]:.3f}    {scores(y, p)[1]:.3f}   {scores(y, p)[2]:.4f}")
+    print(f"{X.shape[1]} personal features. Scored on true attacks on every day (answered or not); "
+          "personal layer refit daily, walk-forward")
+    report(y, {"base + personal layer": p_per, "base + population layer": p_pop,
+               "base (watch only)": meta["p_base"]}, meta["person_id"])
 
     print("\nMore answers -> better forecast: same users with a share of their question answers dropped")
     print(f"  {'answers kept':<14} {'per week':>8}  ROC AUC  PR AUC  Brier    AUC gain vs base")

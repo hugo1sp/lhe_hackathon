@@ -36,6 +36,7 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "collection"))
+from metrics import N_BOOT, warned_share, within_person_auc  # noqa: E402
 from personal import build, evaluate  # noqa: E402
 from questions import FIELDS, LOG_NOW, QUESTIONS, pick_questions  # noqa: E402
 from simulate_answers import answer  # noqa: E402
@@ -123,7 +124,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default="data")
     ap.add_argument("--budgets", type=float, nargs="+", default=[1, 2, 3.6, 7])
-    ap.add_argument("--boot", type=int, default=1000)
+    ap.add_argument("--boot", type=int, default=N_BOOT)
     ap.add_argument("--lam", type=float, default=30.0)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -145,8 +146,10 @@ def main():
     runs += [("diary", "diary", 7.0)]
 
     print("Same users, same truth; base + personal layer trained on what each strategy collected.")
-    print("Scored on true attacks on every day; 95 % CI from bootstrap over persons.\n")
-    print(f"  {'strategy':<14} {'budget':>6} {'asked/wk':>8}  {'ROC AUC':<20} {'Brier':<23} AUC gain vs base")
+    print("Scored on true attacks on every day; 95 % CI from bootstrap over persons; AUC/pers = mean")
+    print("within-person ROC AUC; warned = share of attacks warned at <= 1 false alarm per person-week.\n")
+    print(f"  {'strategy':<14} {'budget':>6} {'asked/wk':>8}  {'ROC AUC':<20} {'Brier':<23} "
+          f"{'AUC gain vs base':<23} {'AUC/pers':>8} {'warned':>6}")
     base_row = None
     for name, strategy, budget in runs:
         labels = collect(people, strategy, budget, rng)
@@ -159,10 +162,12 @@ def main():
             (b_auc, b_brier, _), b_lo, b_hi = bootstrap(meta, y, p_base, p_base, args.boot,
                                                         np.random.default_rng(args.seed))
             print(f"  {'base (watch)':<14} {'-':>6} {'0.0':>8}  {b_auc:.3f} [{b_lo[0]:.3f}, {b_hi[0]:.3f}]  "
-                  f"{b_brier:.4f} [{b_lo[1]:.4f}, {b_hi[1]:.4f}]")
+                  f"{b_brier:.4f} [{b_lo[1]:.4f}, {b_hi[1]:.4f}]  {'':<23} "
+                  f"{within_person_auc(y, p_base, meta['person_id']):>8.3f} {warned_share(y, p_base)[0]:>6.0%}")
             base_row = True
         print(f"  {name:<14} {budget:>6.1f} {asked:>8.1f}  {auc:.3f} [{lo[0]:.3f}, {hi[0]:.3f}]  "
-              f"{brier:.4f} [{lo[1]:.4f}, {hi[1]:.4f}]  {gain:+.3f} [{lo[2]:+.3f}, {hi[2]:+.3f}]")
+              f"{brier:.4f} [{lo[1]:.4f}, {hi[1]:.4f}]  {gain:+.3f} [{lo[2]:+.3f}, {hi[2]:+.3f}]  "
+              f"{within_person_auc(y, p, meta['person_id']):>8.3f} {warned_share(y, p)[0]:>6.0%}")
 
 
 if __name__ == "__main__":
