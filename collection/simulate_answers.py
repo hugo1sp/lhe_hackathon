@@ -55,9 +55,10 @@ def main():
     rows = []
     for pid, d in daily.groupby("person_id"):
         d = d.reset_index(drop=True)
-        # Truth the simulated user answers from: prodrome = attack in the next 1-2 days
-        nxt = d["true_migraine"].shift(-1, fill_value=0) + d["true_migraine"].shift(-2, fill_value=0)
-        d["prodrome"] = np.where(nxt > 0, rng.choice([1, 2], len(d)), 0)
+        # Truth the simulated user answers from. Users notice a real prodrome 70 % of
+        # the time and report false alarms on 8 % of other days
+        felt = np.where(d["true_prodrome"] > 0, rng.random(len(d)) < 0.7, rng.random(len(d)) < 0.08)
+        d["prodrome"] = np.where(felt, rng.choice([1, 2], len(d)), 0)
         d["intensity"] = np.where(d["migraine_intensity"] > 0, d["migraine_intensity"],
                                   rng.choice([2, 3, 4], len(d)))
         for q, r in zip(pick_questions(d, d["true_risk"].to_numpy()), d.itertuples()):
