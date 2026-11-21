@@ -133,6 +133,12 @@ footer.ctl { position: relative; padding: 18px 56px 0; display: flex; flex-direc
 .prog i.run { animation: fill var(--dur) linear forwards; }
 .paused .prog i.run { animation-play-state: paused; }
 @keyframes fill { to { width: 100%; } }
+.mbtn { height: 36px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--panel-line); background: var(--panel); color: var(--tx-2); font: 600 13px Inter, sans-serif; cursor: pointer; margin-left: 6px; }
+.mbtn.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.manual .prog, .manual #play { visibility: hidden; }
+.tap-ok { cursor: pointer; }
+.tap-goal { outline: 2px solid var(--brand, #4f63e6); outline-offset: 2px; animation: hint 1.3s ease-in-out infinite; }
+@keyframes hint { 50% { outline-color: transparent; } }
 .ctl-row { display: flex; align-items: center; gap: 22px; }
 .btns { display: flex; gap: 10px; align-items: center; }
 .cbtn { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--panel-line); background: var(--panel); display: grid; place-items: center; cursor: pointer; font-size: 19px; color: var(--tx); transition: background .2s, transform .15s; }
@@ -405,13 +411,14 @@ body.narrow .foot { flex-direction: column; gap: 6px; }
         <button class="cbtn" id="prev" aria-label="Previous step"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
         <button class="cbtn play" id="play" aria-label="Play"></button>
         <button class="cbtn" id="next" aria-label="Next step"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button class="mbtn" id="mode" aria-pressed="false" title="Tap the buttons on Anna's phone and watch yourself">Manual</button>
       </div>
       <div class="timeline" id="timeline"></div>
       <div class="count" id="count"></div>
     </div>
     <div class="foot">
       <span>Simulated data: person P0187 from our simulator, calibrated on the mBrain21 and Kaggle wearable-migraine datasets. Forecasts from a baseline model. Not medical advice.</span>
-      <span><kbd>Space</kbd> play/pause &nbsp; <kbd>←</kbd> <kbd>→</kbd> step</span>
+      <span><kbd>Space</kbd> play/pause &nbsp; <kbd>←</kbd> <kbd>→</kbd> step &nbsp; <kbd>M</kbd> manual mode</span>
     </div>
   </footer>
 </div>
@@ -756,6 +763,10 @@ function tapOn(scope, sel) {
   const host = scope === "watch" ? $("wscreen") : $("screen");
   const layers = host.querySelectorAll(scope === "watch" ? ".wl" : ".layer"), layer = layers[layers.length - 1];
   const el = layer && layer.querySelector(sel); if (!el) return;
+  tapEl(scope, el);
+}
+function tapEl(scope, el) {
+  const host = scope === "watch" ? $("wscreen") : $("screen");
   const r = document.createElement("span"); r.className = "ripple"; el.appendChild(r);
   if (scope === "phone") { // a fingertip appears where Anna taps
     const hb = host.getBoundingClientRect(), eb = el.getBoundingClientRect(), s = hb.width / host.offsetWidth;
@@ -800,15 +811,30 @@ function go(i) {
 
   // watch
   const [wt, wv] = s.watch;
-  swapLayer($("wscreen"), `<div class="wl">${WATCH[wt](s, wv)}</div>`, "wl");
+  const wlayer = swapLayer($("wscreen"), `<div class="wl">${WATCH[wt](s, wv)}</div>`, "wl");
   if (s.buzz) after(s.buzz, () => { $("watch").classList.remove("buzz"); void $("watch").offsetWidth; $("watch").classList.add("buzz"); });
   else $("watch").classList.remove("buzz");
-  if (s.watchAfter) after(s.watchAfter, () => swapLayer($("wscreen"), `<div class="wl">${WATCH.logged(s, { at: s.time })}</div>`, "wl"));
+  const showLogged = () => swapLayer($("wscreen"), `<div class="wl">${WATCH.logged(s, { at: s.time })}</div>`, "wl");
+  const showThanks = () => { const t = layer.querySelector("#thx"); t && t.classList.add("in"); };
+  if (s.watchAfter && !manual) after(s.watchAfter, showLogged);
 
-  // taps
+  // taps: scripted in autoplay, done by the viewer in manual mode
   tapsShown = tapsBefore(i); $("taps").textContent = tapsShown;
-  (s.taps || []).forEach(([scope, sel, ms]) => after(ms, () => tapOn(scope, sel)));
-  if (s.thanks) after(s.thanks, () => { const t = layer.querySelector("#thx"); t && t.classList.add("in"); });
+  if (!manual) {
+    (s.taps || []).forEach(([scope, sel, ms]) => after(ms, () => tapOn(scope, sel)));
+    if (s.thanks) after(s.thanks, showThanks);
+  } else (s.taps || []).forEach(([scope, sel]) => {
+    const goal = (scope === "watch" ? wlayer : layer).querySelector(sel); if (!goal) return;
+    // answer options can be picked freely; other buttons only by themselves
+    const group = goal.parentElement.matches(".opts, .seg, .chips") ? [...goal.parentElement.children] : [goal];
+    goal.classList.add("tap-goal");
+    group.forEach(el => { el.classList.add("tap-ok"); el.onclick = () => {
+      group.forEach(g => { g.classList.remove("tap-goal", "tap-ok"); g.onclick = null; });
+      tapEl(scope, el);
+      if (s.thanks) after(700, showThanks);
+      if (s.watchAfter && scope === "watch") after(700, showLogged);
+    }; });
+  });
   $("nights").textContent = dayN;
 
   renderSignals(i);
@@ -832,6 +858,14 @@ function renderTimeline() {
   tl.querySelectorAll(".tday").forEach((t, di) => { t.classList.toggle("on", DAYS[di] === STEPS[cur].day); t.classList.toggle("known", revealIdx[DAYS[di]] <= cur); });
 }
 
+let manual = false;
+function setManual(m) {
+  manual = m;
+  if (m) setPlaying(false);
+  document.body.classList.toggle("manual", m);
+  $("mode").classList.toggle("on", m); $("mode").setAttribute("aria-pressed", m);
+  go(cur);
+}
 function setPlaying(p) {
   playing = p;
   document.body.classList.toggle("paused", !p);
@@ -839,13 +873,15 @@ function setPlaying(p) {
   $("play").setAttribute("aria-label", p ? "Pause" : "Play");
 }
 $("prog").addEventListener("animationend", () => { if (playing) { if (cur < STEPS.length - 1) go(cur + 1); else setPlaying(false); } });
-$("play").onclick = () => { if (!playing && cur === STEPS.length - 1) go(0); setPlaying(!playing); };
+$("mode").onclick = () => setManual(!manual);
+$("play").onclick = () => { if (manual) return; if (!playing && cur === STEPS.length - 1) go(0); setPlaying(!playing); };
 $("next").onclick = () => go(cur + 1);
 $("prev").onclick = () => go(cur - 1);
 document.addEventListener("keydown", e => {
   if (e.key === "ArrowRight" || e.key === "PageDown") { go(cur + 1); e.preventDefault(); }
   else if (e.key === "ArrowLeft" || e.key === "PageUp") { go(cur - 1); e.preventDefault(); }
   else if (e.key === " ") { $("play").click(); e.preventDefault(); }
+  else if (e.key === "m" || e.key === "M") setManual(!manual);
   else if (e.key === "Home") go(0);
   else if (e.key === "End") go(STEPS.length - 1);
 });
