@@ -11,6 +11,10 @@ Generation order per person:
      prodrome before attacks - the signal a model should learn to detect.
   5. Data-quality issues: non-wear days and unreported attacks.
 
+Parameters are calibrated against two reference datasets (see datasets/stats.py):
+mBrain21 (attack frequency, intensity, diary compliance) and the hebaqueen
+daily migraine dataset (sleep duration).
+
 Columns prefixed `true_` are ground truth for evaluation only and must not
 be used as model features.
 
@@ -25,6 +29,8 @@ import numpy as np
 import pandas as pd
 
 TRIGGERS = ["sleep_debt", "sleep_irregularity", "stress", "menstrual"]
+# mBrain21 headache intensity counts for 1..5: 1, 30, 66, 27, 2
+INTENSITY_P = np.array([1, 30, 66, 27, 2]) / 126
 WEARABLE_COLS = [
     "sleep_hours", "sleep_efficiency", "sleep_midpoint_h",
     "resting_hr", "hrv_rmssd", "steps", "stress_score",
@@ -68,12 +74,13 @@ def make_person(rng, pid):
         "cycle_length": int(np.clip(rng.normal(28, 2), 24, 35)),
         "base_rhr": rng.normal(62, 6),
         "base_hrv": rng.lognormal(np.log(45), 0.3),
-        "sleep_need": rng.normal(7.5, 0.5),
+        "sleep_need": rng.normal(7.7, 0.5),  # heba: mean sleep 7.71 h
         "base_midpoint": rng.normal(3.5, 0.8),  # hours after midnight
         "base_steps": max(2000, rng.normal(8000, 2500)),
-        "attacks_per_month": float(np.clip(rng.lognormal(np.log(3), 0.5), 0.5, 15)),
+        # mBrain21: 4.3-12.2 headache days/month across its 4 participants
+        "attacks_per_month": float(np.clip(rng.lognormal(np.log(10), 0.5), 3, 25)),  # target before refractory damping
         "nonwear_prob": rng.uniform(0.02, 0.15),
-        "underreport_prob": rng.uniform(0.0, 0.2),
+        "underreport_prob": rng.uniform(0.0, 0.4),  # mBrain21: diary filled on 59-100% of days
         **{f"sens_{t}": v for t, v in sens.items()},
     }
 
@@ -180,6 +187,9 @@ def simulate_person(rng, p, start, n):
     df.loc[nonwear, WEARABLE_COLS] = np.nan
     reported = attack & (rng.random(n) >= p["underreport_prob"])
     df.insert(df.columns.get_loc("true_migraine"), "migraine", reported.astype(int))
+    # Self-reported intensity 1-5 (0 = no report), pooled mBrain21 distribution
+    intensity = rng.choice([1, 2, 3, 4, 5], size=n, p=INTENSITY_P)
+    df.insert(df.columns.get_loc("true_migraine"), "migraine_intensity", np.where(reported, intensity, 0))
     return df
 
 
