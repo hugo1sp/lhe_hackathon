@@ -62,6 +62,7 @@ def z(x):
 
 
 def simulate(days, start, seed):
+    """Anna's watch data, plus her hidden truth per day for evaluation only (never a model input)."""
     rng = np.random.default_rng(seed)
     a, n = ANNA, days
     dates = pd.date_range(start, periods=n, freq="D")
@@ -126,7 +127,10 @@ def simulate(days, start, seed):
     })
     nonwear = (rng.random(n) < 0.03) | episodes(rng, n, 1 / 60, 1, 3) | (attack & (rng.random(n) < 0.15))
     df.loc[nonwear, WEARABLE_COLS] = np.nan
-    return df, attack
+    truth = pd.DataFrame({"date": df["date"], "true_migraine": attack.astype(int), "true_risk": risk.round(4),
+                          "true_prodrome": prodrome.round(3), "true_alcohol": drink.astype(int),
+                          "true_stress": stress.round(3)})
+    return df, truth
 
 
 def main():
