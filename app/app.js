@@ -520,7 +520,13 @@ SHEETS.day = ({ date }) => {
 SHEETS.details = ({ date }) => {
   const l = logOf(date);
   if (!l) return sheetHead("Migraine") + `<p class="muted">No migraine logged.</p>`;
+  // When it started: quick "how long ago" choices (today only, relative to when it was logged) or an exact time
+  const today = date === T(), now = today ? timeAt() : "23:59", base = today ? l.at || now : null;
+  const toM = t => +t.slice(0, 2) * 60 + +t.slice(3), back = m => clock((toM(base) - m) / 60);
+  const agos = today ? [0, 30, 60, 120, 180].filter(m => toM(base) - m >= 0) : [];
   return sheetHead(`Migraine · ${l.t}`, `${longDate(date)} · saved`) + `<div class="stack">
+    ${card(h4("Started", "if it began earlier") + (agos.length ? `<div class="chips">${agos.map(m => `<button class="${l.t === back(m) ? "sel" : ""}" data-act="setStart" data-date="${date}" data-v="${back(m)}">${!m ? "Just now" : m < 60 ? m + " min ago" : m / 60 + " h ago"}</button>`).join("")}</div>` : "") +
+      `<label class="start-at">${agos.length ? "Or exact time" : "Start time"}<input type="time" id="startAt" data-date="${date}" value="${l.t}" max="${now}"></label>`)}
     ${card(h4("Intensity", "optional") + `<div class="choice">${["Mild", "Moderate", "Severe"].map(x => `<button class="${l.int === x ? "sel" : ""}" data-act="setInt" data-date="${date}" data-v="${x}">${x}</button>`).join("")}</div>`)}
     ${card(h4("Medication", "optional · pick any") + `<div class="chips">${["Triptan", "Ibuprofen", "Paracetamol", "Nothing"].map(x => `<button class="${(l.meds || []).includes(x) ? "sel" : ""}" data-act="setMed" data-date="${date}" data-v="${x}">${x}</button>`).join("")}</div>`)}
     <p class="muted" style="text-align:center;margin:0">Your log is already saved. Details help you and your doctor see patterns.</p>
@@ -646,12 +652,13 @@ const ACT = {
   month: el => { if (el.dataset.m) { S.month = el.dataset.m; render(); } },
   day: el => { S.sel = el.dataset.date; render(); openSheet("day", { date: el.dataset.date }); },
   logNow: () => {
-    setLog(T(), { t: timeAt(), int: null, meds: [], src: "tap" }); render();
+    setLog(T(), { t: timeAt(), at: timeAt(), int: null, meds: [], src: "tap" }); render();
     toast(`Migraine logged at ${timeAt()}`); setTimeout(() => openSheet("details", { date: T() }), 650);
   },
   logDay: el => { const ds = el.dataset.date; setLog(ds, { t: ds === T() ? timeAt() : "12:00", int: null, meds: [], src: "tap" }); render(); toast(`Migraine added for ${shortDate(ds)}`); openSheet("details", { date: ds }); },
   details: el => openSheet("details", { date: el.dataset.date }),
   unlog: el => { const ds = el.dataset.date; if (day(ds).log) S.logs[ds] = { deleted: true }; else delete S.logs[ds]; if (sheet && sheet.name === "details") closeSheet(); render(); toast("Log removed", "undo"); },
+  setStart: el => { setLog(el.dataset.date, { t: el.dataset.v }); render(); },
   setInt: el => { const l = logOf(el.dataset.date); setLog(el.dataset.date, { int: l.int === el.dataset.v ? null : el.dataset.v }); render(); },
   setMed: el => { const l = logOf(el.dataset.date), v = el.dataset.v; let m = (l.meds || []).slice();
     m = v === "Nothing" ? (m.includes(v) ? [] : [v]) : m.includes(v) ? m.filter(x => x !== v) : m.filter(x => x !== "Nothing").concat(v); setLog(el.dataset.date, { meds: m }); render(); },
@@ -678,6 +685,12 @@ const ACT = {
 };
 function bump(id) { const m = $(id); if (m) { m.classList.remove("bump"); void m.offsetWidth; m.classList.add("bump"); } }
 
+document.addEventListener("change", e => {   // exact start time in the migraine details sheet
+  const el = e.target;
+  if (el.id !== "startAt" || !el.value) return;
+  const ds = el.dataset.date, v = ds === T() && el.value > timeAt() ? timeAt() : el.value;
+  setLog(ds, { t: v }); render(); toast(`Start time set to ${v}`);
+});
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-act]");
   if (el && !el.disabled && ACT[el.dataset.act]) { ACT[el.dataset.act](el, e); return; }
