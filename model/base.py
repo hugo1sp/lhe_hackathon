@@ -1,11 +1,12 @@
-"""Shared base model: migraine forecast 1, 2 and 3 days ahead from smartwatch data only.
+"""Shared base model: migraine forecast 1, 2 and 3 days ahead from smartwatch data.
 
 Layer 1 of the two-layer design. One LightGBM per horizon, shared by all
-users, that sees only watch-derived features: wearable signals, their
-deviation from the person's own 28-day baseline, yesterday's deviation, 3-day
-means, sleep regularity and non-wear. No cycle day, day of week or migraine
-history: those belong to the per-user personal layer (model/personal.py),
-which builds on p_base.
+users. Rule: only inputs every user has without answering anything, i.e.
+watch-derived features (wearable signals, their deviation from the person's
+own 28-day baseline, yesterday's deviation, 3-day means, sleep regularity,
+non-wear) plus the day of week of the target day (known in advance). No cycle
+day, sex, age or migraine history: those belong to the per-user personal
+layer (model/personal.py), which builds on p_base.
 
 The target is the answered migraine label for day t+h (labels.csv); days
 without an answer are not used for training. Evaluation uses 5-fold CV grouped
@@ -78,21 +79,27 @@ def build_features(daily, labels=None):
     return X[keep], meta[keep]
 
 
+def with_dow(X, meta, h):
+    """Add the target day's weekday (Mon=0), known in advance for every horizon."""
+    return X.assign(dow_ahead=(meta["date"] + pd.Timedelta(days=h)).dt.day_of_week.to_numpy())
+
+
 def predict_base(daily, data=DATA_DIR):
     """Forecast from watch data with the saved models -> person_id,date,p_base,p_base_d2,p_base_d3."""
     X, meta = build_features(daily)
     out = meta[["person_id", "date"]].reset_index(drop=True)
     for h in HORIZONS:
-        out[p_col(h)] = lgb.Booster(model_file=str(Path(data) / f"model_base_d{h}.txt")).predict(X)
+        out[p_col(h)] = lgb.Booster(model_file=str(Path(data) / f"model_base_d{h}.txt")).predict(with_dow(X, meta, h))
     return out
 
 
 def train_horizon(X, meta, daily, h, data):
+    X = with_dow(X, meta, h)
     y, y_true_all = meta[f"y{h}"], meta[f"y_true{h}"]
     labelled = y.notna().to_numpy()
     print(f"\n=== {h} day(s) ahead ===")
     print(f"{len(X)} person-days, {labelled.mean():.0%} with a known label for the target day, "
-          f"{X.shape[1]} watch-only features")
+          f"{X.shape[1]} features (watch + target weekday)")
 
     p = np.zeros(len(X))
     for tr, te in GroupKFold(5).split(X, groups=meta["person_id"]):
