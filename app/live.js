@@ -6,7 +6,7 @@
    Leaving live mode restores the demo state as it was. Accuracy chart data: accuracy_data.js. */
 (() => {
   const START = "2026-06-23", END_T = 72;              // hours since START 00:00
-  const L = { on: false, t: 0, speed: 1, rt: false, skipNights: true, paused: false, snap: null, step: -1, slotKey: "", hadLog: false, answered: {} };
+  const L = { on: false, t: 0, speed: 1, rt: true, skipNights: true, paused: false, snap: null, step: -1, slotKey: "", hadLog: false, answered: {} };
 
   /* ---------- Simulated watch signals ---------- */
   const dateAt = t => addDays(START, Math.floor(t / 24));
@@ -82,9 +82,9 @@
     <div class="lv" id="livePanel">
       <div class="lv-top"><div><div class="lv-clock num" id="lvClock">--:--</div><div class="lv-date" id="lvDate"></div></div><span class="lv-state" id="lvState"></span></div>
       <div class="lv-ctl"><button data-act="livePause" id="lvPause">Pause</button>
-        <button data-act="liveSpeed" data-v="rt" title="One second per second, nothing skipped">Real time</button>
-        ${[1, 4, 16].map(v => `<button data-act="liveSpeed" data-v="${v}" class="${v === 1 ? "on" : ""}">${v}x</button>`).join("")}
-        <button data-act="liveNights" id="lvNights" class="on" title="Nights run 4x faster than days">Skip nights</button>
+        <button data-act="liveSpeed" data-v="rt" class="on" title="One second per second, nothing skipped">Real time</button>
+        ${[1, 4, 16].map(v => `<button data-act="liveSpeed" data-v="${v}" >${v}x</button>`).join("")}
+        <button data-act="liveNights" id="lvNights" class="on" disabled title="Nights run 4x faster than days">Skip nights</button>
         <button data-act="liveRestart">Restart</button></div>
       <div class="lv-box"><div class="lv-h"><span>Watch stream</span><span>last 3 h</span></div>
         <svg id="lvSpark" viewBox="0 0 360 64" width="100%" height="64"></svg>
