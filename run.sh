@@ -18,5 +18,5 @@ fi
 # 3. Export demo data for the frontend (docs/, served by GitHub Pages)
 .venv/bin/python frontend/export.py --data data --out docs/data.json
 
-# 4. Train next-day forecast model on daily.csv + labels.csv -> data/model_lgbm.txt
+# 4. Train forecast models 1, 2 and 3 days ahead on daily.csv + labels.csv -> data/model_lgbm_d{1,2,3}.txt
 .venv/bin/python model/train_lgbm.py --data data
